@@ -33,8 +33,8 @@ th{font-weight:bold;text-align:center}
 caption{margin-bottom:.5em;text-align:center}
 p,fieldset,table{margin-bottom:1em}
 time{display:block}
-.cf:after{clear:both;content:".";display:block;height:0;line-height:0;visibility:hidden}
-.cf{display:inline-block}
+.cf::after{clear:both;content:".";display:block;font-size:0;height:0;line-height:0;visibility:hidden}
+.cf{display:block;zoom:1}
 html[xmlns] .cf{display:block}
 * html .cf{height:1%}
 a:link,a:visited{color:#3b5998;text-decoration:none}
@@ -42,13 +42,16 @@ a:hover,a:active{text-decoration:none}
 
 /* Begin Styles */
 
-ul {
+.lfloat{float:left}
+.rfloat{float:right}
+
+ul li,ul,li {
 list-style-type:none;
 margin:0;
 padding:0;
 }
 
-form > div {
+#f_login > div,#f_register > div {
 margin:10px;
 }
 
@@ -61,11 +64,11 @@ input:disabled,textarea:disabled {
 background-color:#ebebe4;
 }
 
-input {
+input[type="text"],input[type="password"],input[type="email"] {
 width:300px;
 }
 
-input,select {
+#f_login input,#f_register input,#f_register select,.buttonTools input {
 background:-webkit-gradient(linear,left top,left bottom,from(#fff),to(#fff));
 background:-moz-linear-gradient(top,#fff,#fff);
 border:1px solid #717171;
@@ -83,18 +86,39 @@ padding:5px;
 text-shadow:0 1px 0 #666;
 }
 
-input:focus {
+#f_login input:focus,#f_register input:focus {
 box-shadow:0 0 5px #007eff;
 -khtml-box-shadow:0 0 5px #007eff;
 -moz-box-shadow:0 0 5px #007eff;
 -webkit-box-shadow:0 0 5px #007eff;
 }
 
-input.error {
+#f_login input.error,#f_register input.error {
 box-shadow:0 0 5px #ff4848;
 -khtml-box-shadow:0 0 5px #ff4848;
 -moz-box-shadow:0 0 5px #ff4848;
 -webkit-box-shadow:0 0 5px #ff4848;
+}
+
+.buttonTools {
+margin-top:5px;
+}
+
+.buttonTools ul li {
+float:left;
+}
+
+.buttonTools ul li:not(:first-child) {
+margin-left:5px;
+}
+
+.buttonTools label {
+display:block;
+width:0;
+}
+
+.buttonTools input {
+cursor:pointer;
 }
 
 #doc {
@@ -121,7 +145,7 @@ font-family:arial,sans-serif;
 font-size:20pt;
 left:18px;
 margin:0;
-position:relative;
+position:absolute;
 text-shadow:0 2px 2px rgb(255,255,255),0 4px 8px rgba(0,0,0,.4);
 text-transform:uppercase;
 top:10px;
@@ -152,6 +176,45 @@ width:178px;
 #doc > header .right {
 display:table-cell;
 width:770px;
+}
+
+#search {
+
+}
+
+#header_search {
+border:1px solid #d9d9d9;
+border-top:1px solid silver;
+font-size:110%;
+height:28px;
+margin:14px 0 0 20px;
+outline:0;
+padding:0 10px 0 6px;
+width:362px;
+}
+
+#header_search:hover,#header_search:focus {
+border:1px solid #4d90fe;
+box-shadow:inset inset 0 1px 2px rgba(0,0,0,0.3);
+-khtml-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+-moz-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+-webkit-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+}
+
+#pageNav li {
+cursor:pointer;
+display:inline-block;
+float:left;
+font-weight:bold;
+padding:21px 10px 21px;
+}
+
+#pageNav li:hover {
+background-color:#b3b3b3;
+}
+
+#pageNav a {
+color:#fff;
 }
 
 #left {
@@ -259,7 +322,7 @@ border-bottom:1px solid #fff;
 color:#111;
 display:block;
 font-size:8pt;
-padding:3px 8px 3px 28px;
+padding:3px 8px 4px 28px;
 position:relative;
 }
 
@@ -307,12 +370,78 @@ padding:0 4px;
 position:relative;
 }
 
-.countValue {
-
-}
-
 .loadingIndicator {
 display:none;
+}
+
+#home_newsfeed {
+margin:0 20px;
+}
+
+.streamHeader {
+padding-bottom:16px;
+}
+
+.headerTop {
+position:relative;
+}
+
+.headerTitle {
+color:#1c2a47;
+font-size:13pt;
+font-weight:bold;
+line-height:18px;
+padding-left:22px;
+}
+
+.headerTitle .img {
+background-image:url(i/icons/default.gif);
+background-repeat:no-repeat;
+display:inline-block;
+height:16px;
+left:0;
+position:absolute;
+top:2px;
+width:16px;
+}
+
+.headerActions {
+float:right;
+margin-top:3px;
+}
+
+.updateStatus {
+border-bottom:1px solid #b3b3b3;
+padding-bottom:10px;
+}
+
+.updateStatus .buttonTools {
+display:none;
+}
+
+#composer {
+border-top:1px solid #ccc;
+}
+
+.wrap {
+border-left:1px solid #ccc;
+}
+
+.innerWrap {
+border:solid #b4bbcd;
+border-width: 0 1px 1px 0;
+padding:5px;
+}
+
+.textarea {
+background-color:transparent;
+border:0;
+max-height:16px;
+outline:0;
+padding:0;
+resize:none;
+vertical-align:bottom;
+width:100%;
 }
 
 .profile_image {
@@ -321,6 +450,6 @@ margin-right:8px;
 }
 
 .profile_image img {
-height:200px;
+min-height:100px;
 width:200px;
 }

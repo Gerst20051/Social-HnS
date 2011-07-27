@@ -43,18 +43,53 @@ logOut();
 if (isset($_GET['p'])) {
 if ($_GET['p'] == 'header') {
 ?>
-<div id="search">
-Search
+<div id="search" class="lfloat">
+<form class="f_search" action="#" method="post" onsubmit="return false">
+<input id="header_search" type="text" autocomplete="off" name="header_search" placeholder="Find people"/>
+</form>
 </div>
-<div id="nav">
-Navigation
+<div id="nav" class="rfloat">
+<ul id="pageNav">
+<li id="navHome"><a href="#" id="home" class="topNavLink">Home</a></li>
+<li id="navProfile"><a href="#" id="profile" class="topNavLink">Profile</a></li>
+<li id="navLogout"><a href="#" id="logout" class="topNavLink">Logout</a></li>
+</ul>
 </div>
 <?php
 } elseif ($_GET['p'] == 'home_newsfeed') {
-	echo '<div id="home_newsfeed">';
-	echo 'Welcome, '.$_SESSION['fullname'].'!';
-	echo ' <a href="#" id="logout">Logout</a>';
-	echo '</div>';
+?>
+<div id="home_newsfeed">
+<div id="newsfeed_header">
+<div class="streamHeader">
+<div class="headerTop cf">
+<div class="headerActions"><a class="updateNewsFeed" href="#"><span id="mostRecent" class="buttonText">Most Recent</span></a></div>
+<div><div class="headerTitle"><i class="img"></i>News Feed</div></div>
+</div>
+</div>
+</div>
+<div class="updateStatus cf">
+<form class="f_updateStatus" action="#" method="post" onsubmit="return false">
+<div id="composer">
+<div class="messageBox">
+<div class="wrap">
+<div class="innerWrap">
+<textarea class="textarea" placeholder="Share what's new..." cols="30" rows="5"></textarea>
+</div>
+</div>
+</div>
+</div>
+<div class="buttonTools">
+<ul class="toolList rfloat">
+<li class="listItem"><label class="shareButton" for="share"><input value="Share" type="submit" id="share"/></label></li>
+</ul>
+</div>
+</form>
+</div>
+<div id="home_stream">
+
+</div>
+</div>
+<?php
 } elseif ($_GET['p'] == 'home_leftcol') {
 	if (isset($_SESSION['default_image'])) $image = '/uploads/' . $_SESSION['username'] . '/images/thumb/' . $_SESSION['default_image'];
 	else $image = 'i/mem/default.jpg';
@@ -104,7 +139,25 @@ Navigation
 } elseif ($_GET['p'] == 'home_rightcol') {
 ?>
 <div id="home_rightcol">
-Right Column!
+Main Right Column!
+</div>
+<?php
+} elseif ($_GET['p'] == 'messages') {
+?>
+<div id="messages">
+Messages
+</div>
+<?php
+} elseif ($_GET['p'] == 'friends') {
+?>
+<div id="friends">
+Friends
+</div>
+<?php
+} elseif ($_GET['p'] == 'edit') {
+?>
+<div id="edit">
+Edit Profile
 </div>
 <?php
 } elseif ($_GET['p'] == 'profile') {
@@ -161,6 +214,30 @@ Right Column!
 </div>
 </div>
 <?php
+} elseif ($_GET['p'] == 'profile_rightcol') {
+?>
+<div id="profile_rightcol">
+Profile Right Column
+</div>
+<?php
+} elseif ($_GET['p'] == 'wall') {
+?>
+<div id="wall">
+Wall
+</div>
+<?php
+} elseif ($_GET['p'] == 'info') {
+?>
+<div id="info">
+Info
+</div>
+<?php
+} elseif ($_GET['p'] == 'photos') {
+?>
+<div id="photos">
+Photos
+</div>
+<?php
 }
 }
 } else {
@@ -178,9 +255,18 @@ try {
 }
 }
 if (isset($_POST['register'])) {
+function ucname($string) {
+	$string = ucwords(strtolower($string));
+	foreach (array('-', '\'', 'Mc') as $delimiter) {
+		if (strpos($string, $delimiter) !== false) {
+			$string = implode($delimiter, array_map('ucfirst', explode($delimiter, $string)));
+		}
+	}
+	return $string;
+}
 $username = (isset($_POST['username'])) ? $_POST['username'] : '';
 $password = (isset($_POST['password'])) ? $_POST['password'] : '';
-$name = (isset($_POST['name'])) ? ucname($_POST['fullname']) : '';
+$name = (isset($_POST['name'])) ? ucname($_POST['name']) : '';
 $email = (isset($_POST['email'])) ? $_POST['email'] : '';
 $hometown = (isset($_POST['hometown'])) ? $_POST['hometown'] : '';
 $community = (isset($_POST['city'])) ? $_POST['city'] : '';
@@ -214,20 +300,24 @@ try {
 } elseif ($_GET['p'] == 'login') {
 ?>
 <div id="login">
-<form action="#" method="post" id="f_login">
+<form id="f_login" action="#" method="post" onsubmit="return false">
 <input type="hidden" name="login"/>
 <div><label for="lusername">Username:</label><input type="text" name="lusername" id="lusername" value=""/></div>
 <div><label for="lpassword">Password:</label><input type="password" name="lpassword" id="lpassword" value=""/></div>
-<a href="#" id="b_login_splash">Login</a>
+<div class="buttonTools">
+<ul class="toolList lfloat">
+<li class="listItem"><label class="loginButton" for="b_login_splash"><input value="Login" type="submit" id="b_login_splash"/></label></li>
+<li class="listItem"><label class="registerButton" for="b_register_splash"><input value="Register" type="button" id="b_register_splash"/></label></li>
+</ul>
+</div>
 </form>
-<a href="#register" id="b_register_splash">Register</a>
 </div>
 <?php
 } elseif ($_GET['p'] == 'register') {
 ?>
 <div id="register">
 <header>Register</header>
-<form action="#" method="post" id="f_register">
+<form id="f_register" action="#" method="post" onsubmit="return false">
 <input type="hidden" name="register"/>
 <div><label for="reg_username">Username:</label><input type="text" name="reg_username" id="reg_username" value=""/></div>
 <div><label for="reg_password">Password:</label><input type="password" name="reg_password" id="reg_password" value=""/></div>
@@ -263,10 +353,13 @@ try {
 <select name="reg_bday" id="reg_bday"><option value="0"></option></select>
 <select name="reg_byear" id="reg_byear"><option value="0"></option></select>
 </div>
-</form>
-<div>
-<a href="#" id="b_login">Login</a> - <a href="#" id="b_register">Register</a>
+<div class="buttonTools">
+<ul class="toolList lfloat">
+<li class="listItem"><label class="loginButton" for="b_login"><input value="Login" type="submit" id="b_login"/></label></li>
+<li class="listItem"><label class="registerButton" for="b_register"><input value="Register" type="submit" id="b_register"/></label></li>
+</ul>
 </div>
+</form>
 </div>
 <script>
 (function(){

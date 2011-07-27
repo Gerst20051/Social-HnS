@@ -6,9 +6,11 @@ logged: false,
 loginFocus: false,
 registerFocus: false,
 currentPage: "login",
+profileID: 0,
 loadedLeft: [],
 loadedContent: [],
 loadedRight: [],
+user: {},
 onKeyDown: function(e){
 	var keyCode = e.keyCode || e.which;
 	if (keyCode == 13) {
@@ -31,6 +33,24 @@ empty: function(mixed){
 		return true;
 	}
 	return false;
+},
+setPage: function(name){
+	aC.currentPage = name;
+},
+setTitle: function(title,type){
+	if (!type) {
+		if (!title) document.title = aC.title;
+		else document.title = aC.title + " | " + title;
+	} else {
+		document.title = title;
+	}
+},
+setHash: function(hash){
+	if (!hash) window.location.replace("#");
+	else window.location.replace("#" + encodeURI(hash));
+},
+getHash: function(){
+	return decodeURIComponent(window.location.hash.substring(1));
 },
 init: function(){
 	$.get('ajax.php', {p:"logged"}, function(response) {
@@ -107,24 +127,6 @@ loadModule: function(module){
 		}
 		*/
 	});
-},
-setPage: function(name){
-	aC.currentPage = name;
-},
-setTitle: function(title,type){
-	if (!type) {
-		if (!title) document.title = aC.title;
-		else document.title = aC.title + " | " + title;
-	} else {
-		document.title = title;
-	}
-},
-setHash: function(hash){
-	if (!hash) window.location.replace("#");
-	else window.location.replace("#" + encodeURI(hash));
-},
-getHash: function(){
-	return decodeURIComponent(window.location.hash.substring(1));
 },
 login: function(){
 	var e = false,
@@ -255,9 +257,16 @@ $("#logout").live('click',function(){
 $(".welcome_image,.welcome_name,#profileLink").live('click',function(){
 	if (aC.currentPage != "profile") {
 		aC.setPage('profile'); aC.setHash('profile'); aC.setTitle('Profile Full Name',true);
-		aC.loadModule('profile_stream');
+		aC.loadModule('profile');
 		aC.loadModule('profile_leftcol','left');
+		aC.loadModule('profile_rightcol','right');
 		$("#wallLink").click();
+	}
+});
+$(".welcome_editlink").live('click',function(){
+	if (aC.currentPage != "edit") {
+		aC.setPage('edit');
+		aC.loadModule('edit');
 	}
 });
 $(".sideNavItem").live('click',function(){
@@ -282,6 +291,33 @@ $("#friendsLink").live('click',function(){
 	if (aC.currentPage != "friends") {
 		aC.setPage('friends');
 		aC.loadModule('friends');
+	}
+});
+$("#wallLink").live('click',function(){
+	if (aC.currentPage != "profile") {
+		aC.setPage('profile');
+		aC.loadModule('profile');
+	}
+});
+$("#infoLink").live('click',function(){
+	if (aC.currentPage != "info") {
+		aC.setPage('info');
+		aC.loadModule('info');
+	}
+});
+$("#photosLink").live('click',function(){
+	if (aC.currentPage != "photos") {
+		aC.setPage('photos');
+		aC.loadModule('photos');
+	}
+});
+$(".updateStatus .textarea").live('focus',function(){
+	$(this).css('max-height',400);
+	$(".updateStatus .buttonTools").show();
+}).live('blur',function(){
+	if ($(this).val() == "") {
+		$(this).css('max-height',16);
+		$(".updateStatus .buttonTools").hide();
 	}
 });
 });
