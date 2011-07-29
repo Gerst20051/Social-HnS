@@ -1,7 +1,8 @@
 <?php
+require 'mysql.config.php';
 class MySQL {
 private $result;
-public function __construct($host = 'localhost', $user = '', $password = '', $database = '') {
+public function __construct($host = MYSQL_HOST, $user = MYSQL_USER, $password = MYSQL_PASSWORD, $database = MYSQL_DATABASE) {
 	if (!$con = mysql_connect($host,$user,$password)) {
 		throw new Exception('Error connecting to the server');
 	}
@@ -39,11 +40,6 @@ public function fetchRow() {
 	return false;
 }
 
-public function fetchAssocRow() {
-	if ($row = mysql_fetch_assoc($this->result)) return $row;
-	else return false;
-}
-
 public function fetchAll($table='info') {
 	$this->query('SELECT * FROM '.$table);
 	$rows = array();
@@ -53,17 +49,31 @@ public function fetchAll($table='info') {
 	return $rows;
 }
 
-public function insert($params=array(),$table='info') {
-	foreach ($params as $key=>$value) {
-		if ($key != "password") $params[$key] = "mysql_real_escape_string($value)";
-		else $params[$key] = "PASSWORD(\"mysql_real_escape_string($value)\")";
+public function fetchRows() {
+	$rows = array();
+	while ($row = $this->fetchRow()) {
+		$rows[] = $row;
 	}
-	$sql = 'INSERT INTO '.$table.' ('.implode(',',array_keys($params)).') VALUES ('.implode(',',array_values($params)).')';
-	$this->query($sql);
+	return $rows;
+}
+
+public function fetchAssocRow() {
+	if ($row = mysql_fetch_assoc($this->result)) return $row;
+	else return false;
+}
+
+public function insert($table, $params) {
+	$values = array_map('mysql_real_escape_string',array_values($params));
+	$keys = array_keys($params);
+	$this->query('INSERT INTO `'.$table.'` (`'.implode('`,`', $keys).'`) VALUES (\''.implode('\',\'', $values).'\')');
 }
 
 public function insertID() {
 	return mysql_insert_id($this->result);
+}
+
+public function affectedRows() {
+	return mysql_affected_rows();
 }
 }
 ?>

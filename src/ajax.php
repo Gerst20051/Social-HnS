@@ -37,11 +37,66 @@ function logOut() {
 
 if (isset($_SESSION['logged'])) {
 loggedIn();
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_POST['logout'])) {
 logOut();
+} elseif (isset($_POST['p'])) {
+if ($_POST['p'] == 'status') {
+try {
+	$db = new MySQL();
+	$db->insert('stream', array(
+		'owner'=>$_SESSION['user_id'],
+		'timestamp'=>time(),
+		'type'=>1,
+		'data'=>strip_tags($_POST['data'])
+	));
+	if ($db->affectedRows() == 1) {
+		die($db->insertID());
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
 }
+} elseif ($_POST['p'] == 'comment') {
+die('1');
+/*
+try {
+	$db = new MySQL();
+	$db->insert('stream', array(
+		'owner'=>$_SESSION['user_id'],
+		'timestamp'=>time(),
+		'data'=>strip_tags($_POST['data'])
+	));
+	if ($db->affectedRows() == 1) {
+		die($db->insertID());
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+*/
+} elseif ($_POST['p'] == 'like') {
+
+}
+}
+} elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
 if (isset($_GET['p'])) {
-if ($_GET['p'] == 'header') {
+if ($_GET['p'] == 'userdata') {
+try {
+	$db = new MySQL();
+	if (!isset($_GET['uid'])) $uid = $_SESSION['user_id'];
+	else $uid = $_GET['uid'];
+	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.followers,i.default_image FROM login u JOIN info i ON u.user_id = i.user_id WHERE u.user_id = '.$uid);
+	if ($db->numRows() == 1) {
+		header('Content-Type: text/javascript; charset=utf8');
+		$rows = $db->fetchRow();
+		print_r(json_encode($rows));
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+} elseif ($_GET['p'] == 'header') {
 ?>
 <div id="search" class="lfloat">
 <form class="f_search" action="#" method="post" onsubmit="return false">
@@ -50,19 +105,20 @@ if ($_GET['p'] == 'header') {
 </div>
 <div id="nav" class="rfloat">
 <ul id="pageNav">
-<li id="navHome"><a href="#" id="home" class="topNavLink">Home</a></li>
-<li id="navProfile"><a href="#" id="profile" class="topNavLink">Profile</a></li>
-<li id="navLogout"><a href="#" id="logout" class="topNavLink">Logout</a></li>
+<li id="navHome"><a href="#" id="headerHomeLink" class="topNavLink homeLink">Home</a></li>
+<li id="navProfile"><a href="#" id="headerProfileLink" class="topNavLink profileLink">Profile</a></li>
+<li id="navLogout"><a href="#" id="headerLogoutLink" class="topNavLink logoutLink">Logout</a></li>
 </ul>
 </div>
 <?php
 } elseif ($_GET['p'] == 'home_newsfeed') {
 ?>
 <div id="home_newsfeed">
+<header class="streamHeader">
 <div id="newsfeed_header">
-<div class="streamHeader">
+<div class="streamHeading">
 <div class="headerTop cf">
-<div class="headerActions"><a class="updateNewsFeed" href="#"><span id="mostRecent" class="buttonText">Most Recent</span></a></div>
+<div class="headerActions"><a class="updateNewsFeed" href="#"><span class="loadingMostRecent"></span><span id="mostRecent" class="buttonText">Most Recent</span></a></div>
 <div><div class="headerTitle"><i class="img"></i>News Feed</div></div>
 </div>
 </div>
@@ -78,15 +134,207 @@ if ($_GET['p'] == 'header') {
 </div>
 </div>
 </div>
-<div class="buttonTools">
+<div class="buttonTools cf">
 <ul class="toolList rfloat">
 <li class="listItem"><label class="shareButton" for="share"><input value="Share" type="submit" id="share"/></label></li>
 </ul>
 </div>
 </form>
 </div>
+</header>
 <div id="home_stream">
+<div id="uiStream">
+<ul id="stream">
+<li id="update-3">
+<div class="updateWrapper">
+<div class="updateTitle">
+<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="updateNameDate">
+<a href="#" class="updateNameLink">Andrew Gerst</a>
+<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="July 27, 2011 11:11:10 PM">Yesterday 11:11 PM</a></span>
+</div>
+</div>
+<div class="updateBody">
+Here's my recommendation if you're looking to do something besides G+ tonight. Go watch this Kurzweil / Singularity documentary. Technology will accelerate exponentially. Within 25 years, computers will have consciousness. Humans will soon be bionic.
+</div>
+<div class="updateAttachments">
+</div>
+<div class="updateActions">
+<ul class="streamActions">
+<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>
+<li class="updateLikes active"><a href="#" class="updateLikesLink">421 likes</a> by You and 420 others</li>
+<li class="updateShares active"><a href="#" class="updateSharesLink">205 shares</a> - Abe Buhlmann, Abhinav Choudhury, Adam McLaughlin, Aid, and Andrew Gerst</li>
+<li class="updateOlderComments clickable active"><a href="#" class="updateOlderCommentsLink">161 older comments</a> from Victor Espinoza, Amal Babu, Bud Hoffman, and Andrew Gerst</li>
+<li class="updateComments active">
+<ul class="streamComments">
+<li id="comment-2">
+<div class="commentWrapper">
+<div class="commentContent">
+<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="commentNameBody">
+<a href="#" class="commentNameLink">Phillip Tunstall</a> - <span class="commentBody">Watch "Ghost in the Shell" to be better prepared...</span>
+</div>
+<span class="expandComment"><a href="#" class="expandCommentLink">Expand this comment &#187;</a></span>
+<span class="collapseComment"><a href="#" class="collapseCommentLink">Collapse this comment</a></span>
+<div class="commentTimeTools">
+<span class="commentTime" title="Jul 28, 2011 9:13:25 AM">9:13 AM</span></span>&nbsp;&nbsp;
+<span class="commentTools"><a href="#" class="commentLikeLink">Like</a></span>
+</div>
+</div>
+</div>
+</li>
+<li id="comment-3">
+<div class="commentWrapper">
+<div class="commentContent">
+<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="commentNameBody">
+<a href="#" class="commentNameLink">Kai Xu</a> - <span class="commentBody">Never was a fan of the Top News feed on Facebook. Seeing that start to happen here is.. disappointing. If g+ would like to differentiate itself from Facebook, I would set that as an option, and default to sorting by post date. Being able to set a circle as the default view for the Stream would be an awesome addition.
 
+If I really wanted an inflexible, non-user friendly Top News feed.. I'd go elsewhere.</span>
+</div>
+<span class="expandComment"><a href="#" class="expandCommentLink">Expand this comment &#187;</a></span>
+<span class="collapseComment"><a href="#" class="collapseCommentLink">Collapse this comment</a></span>
+<div class="commentTimeTools">
+<span class="commentTime" title="Jul 28, 2011 9:13:25 AM">9:13 AM</span></span>&nbsp;&nbsp;
+<span class="commentTools"><a href="#" class="commentLikeLink">Like</a></span>
+</div>
+</div>
+</div>
+</li>
+<li id="comment-4">
+<div class="commentWrapper">
+<div class="commentContent">
+<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="commentNameBody">
+<a href="#" class="commentNameLink">Kai Xu</a> - <span class="commentBody">Why would a women with big breast be automatically assumed to be not intelligent.
+
+I am not sure how the word sexist come into the comments. But If you type the word "sexy" in Google, you will find mostly women. In many studies/experiments it was found that "female with male" and "female only" erotic images excited both men and women, while "men only" erotic images only excited a minor portion of females. So at the end of the day the term "sexy" can be assumed to apply mostly on females. Women aren't as excited by the visual sense as men are. Thus why men and women are different! because their brains work different.
+
+I believe some tech people on Google+ are way too analytical. Yes, every person is different, and some have been desensitized to "sexy stuff". But at the end of the day I believe Tom was just trying to get a point across that Google is "sexy". The simplest, commercial, and catchy method of making it understandable that Google is SEXY was a photo of the sort Tom posted.</span>
+</div>
+<span class="expandComment"><a href="#" class="expandCommentLink">Expand this comment &#187;</a></span>
+<span class="collapseComment"><a href="#" class="collapseCommentLink">Collapse this comment</a></span>
+<div class="commentTimeTools">
+<span class="commentTime" title="Jul 28, 2011 9:13:25 AM">9:13 AM</span></span>&nbsp;&nbsp;
+<span class="commentTools"><a href="#" class="commentLikeLink">Like</a></span>
+</div>
+</div>
+</div>
+</li>
+</ul>
+</li>
+<li class="updateNewComments clickable active"><a href="#" class="updateNewCommentsLink">3 more comments</a> from Adam Philpott, Ross Sheingold and Brian Braucasfdsafsdfsfd</li>
+<li class="updateComment active">
+<div class="updateCommentBox">
+<form class="f_updateComment" action="#" method="post" onsubmit="return false">
+<div id="updateComposer">
+<div class="commentBox">
+<div class="wrap">
+<div class="innerWrap">
+<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>
+</div>
+</div>
+</div>
+</div>
+<div class="buttonTools cf">
+<ul class="toolList rfloat">
+<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>
+</ul>
+</div>
+</form>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</li>
+<li id="update-2">
+<div class="updateWrapper">
+<div class="updateTitle">
+<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="updateNameDate">
+<a href="#" class="updateNameLink">Andrew Gerst</a>
+<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="July 27, 2011 11:11:10 PM">Yesterday 11:11 PM</a></span>
+</div>
+</div>
+<div class="updateBody">
+Here's my recommendation if you're looking to do something besides G+ tonight. Go watch this Kurzweil / Singularity documentary. Technology will accelerate exponentially. Within 25 years, computers will have consciousness. Humans will soon be bionic.
+</div>
+<div class="updateAttachments">
+</div>
+<div class="updateActions">
+<ul class="streamActions">
+<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>
+<li class="updateLikes"></li>
+<li class="updateShares"></li>
+<li class="updateOlderComments clickable"></li>
+<li class="updateComments">
+<ul class="streamComments">
+<li></li>
+</ul>
+</li>
+<li class="updateNewComments clickable"></li>
+<li class="updateComment">
+<div class="updateCommentBox">
+<form class="f_updateComment" action="#" method="post" onsubmit="return false">
+<div id="updateComposer">
+<div class="commentBox">
+<div class="wrap">
+<div class="innerWrap">
+<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>
+</div>
+</div>
+</div>
+</div>
+<div class="buttonTools cf">
+<ul class="toolList rfloat">
+<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>
+</ul>
+</div>
+</form>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</li>
+<li id="update-1">
+<div class="updateWrapper">
+<div class="updateTitle">
+<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>
+<div class="updateNameDate">
+<a href="#" class="updateNameLink">Andrew Gerst</a>
+<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="July 27, 2011 11:11:10 PM">Yesterday 11:11 PM</a></span>
+</div>
+</div>
+<div class="updateBody">
+Here's my recommendation if you're looking to do something besides G+ tonight. Go watch this Kurzweil / Singularity documentary. Technology will accelerate exponentially. Within 25 years, computers will have consciousness. Humans will soon be bionic.
+</div>
+<div class="updateAttachments">
+</div>
+<div class="updateActions">
+<ul class="streamActions">
+<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>
+<li class="updateLikes"></li>
+<li class="updateShares"></li>
+<li class="updateOlderComments clickable"></li>
+<li class="updateComments">
+<ul class="streamComments">
+<li></li>
+</ul>
+</li>
+<li class="updateNewComments clickable"></li>
+<li class="updateComment"></li>
+</ul>
+</div>
+</div>
+</li>
+</ul>
+<div class="loadMoreLink">
+<span class="loadMore">More</span>
+<span class="loadingMore"><span class="loadingMoreText">Loading...</span></span>
+</div>
+</div>
 </div>
 </div>
 <?php
@@ -214,22 +462,16 @@ Edit Profile
 </div>
 </div>
 <?php
-} elseif ($_GET['p'] == 'profile_rightcol') {
-?>
-<div id="profile_rightcol">
-Profile Right Column
-</div>
-<?php
 } elseif ($_GET['p'] == 'wall') {
 ?>
 <div id="wall">
 Wall
 </div>
 <?php
-} elseif ($_GET['p'] == 'info') {
+} elseif ($_GET['p'] == 'about') {
 ?>
-<div id="info">
-Info
+<div id="about">
+About
 </div>
 <?php
 } elseif ($_GET['p'] == 'photos') {
@@ -238,9 +480,37 @@ Info
 Photos
 </div>
 <?php
+} elseif ($_GET['p'] == 'stream') {
+try {
+	$db = new MySQL();
+	$db->query('SELECT * FROM stream WHERE owner IN ('.$_SESSION['user_id'].')');
+	// $query = 'SELECT * FROM stream WHERE owner IN ('.$_SESSION['user_id'].',`'.implode('`,`', $followers).'`)';
+	if ($db->numRows() > 0) {
+		header('Content-Type: text/javascript; charset=utf8');
+		$rows = $db->fetchRows();
+		print_r('('.json_encode($rows).');');
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+} elseif ($_GET['p'] == 'followers') {
+try {
+	$db = new MySQL();
+	$db->query();
+	if ($db->numRows() > 0) {
+		$row = $db->fetchRows();
+		
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+}
 }
 }
 } else {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_POST['login'])) {
 try {
 	$db = new MySQL();
@@ -279,14 +549,50 @@ list($firstname, $middlename, $lastname) = split(' ',$name);
 if (!isset($lastname)) { $lastname = $middlename; unset($middlename); }
 try {
 	$db = new MySQL();
-	$db->insert(array('username'=>$username,'password'=>$password,'access_level'=>1,'last_login'=>date('Y-m-d'),'date_joined'=>date('Y-m-d'),'last_login_ip'=>$ip),'login');
-	$db->insert(array('user_id'=>$db->insertID(),'firstname'=>$firstname,'middlename'=>$middlename,'lastname'=>$lastname,'email'=>$email,'gender'=>$gender,'hometown'=>$hometown,'community'=>$community,'birth_month'=>$bmonth,'birth_day'=>$bday,'birth_year'=>$byear,'logins'=>1));
+	$db->insert('login', array(
+		'username'=>$username,
+		'access_level'=>1,
+		'last_login'=>date('Y-m-d'),
+		'date_joined'=>date('Y-m-d'),
+		'last_login_ip'=>$ip
+	));
+	$user_id = $db->insertID();
+	$db->query('UPDATE login SET password = PASSWORD("'.mysql_real_escape_string($password).'") WHERE user_id = '.$user_id);
+	$db->insert('info', array(
+		'user_id'=>$user_id,
+		'firstname'=>$firstname,
+		'middlename'=>$middlename,
+		'lastname'=>$lastname,
+		'email'=>$email,
+		'gender'=>$gender,
+		'hometown'=>$hometown,
+		'community'=>$community,
+		'birth_month'=>$bmonth,
+		'birth_day'=>$bday,
+		'birth_year'=>$byear,
+		'logins'=>1
+	));
+	if ($db->affectedRows() == 1) {
+		$_SESSION['logged'] = true;
+		$_SESSION['user_id'] = $user_id;
+		$_SESSION['username'] = $username;
+		$_SESSION['access_level'] = 1;
+		$_SESSION['last_login'] = date('Y-m-d');
+		$_SESSION['last_login_ip'] = $ip;
+		if (isset($middlename) && !empty($middlename)) $_SESSION['fullname'] = $firstname . ' ' . $middlename . ' ' . $lastname;
+		else $_SESSION['fullname'] = $firstname . ' ' . $lastname;
+		$_SESSION['firstname'] = $row['firstname'];
+		if (isset($row['middlename']) && !empty($row['middlename'])) $_SESSION['middlename'] = $middlename;
+		$_SESSION['lastname'] = $lastname;
+		die('true');
+	} else die('false');
 } catch(Exception $e) {
 	echo $e->getMessage();
 	exit();
 }
 loggedIn();
 }
+} elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
 if (isset($_GET['p'])) {
 if ($_GET['p'] == 'username') {
 try {
@@ -371,6 +677,7 @@ $("#reg_byear").append(byear);
 })();
 </script>
 <?php
+}
 }
 }
 }

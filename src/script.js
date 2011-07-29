@@ -9,20 +9,22 @@ currentPage: "login",
 profileID: 0,
 loadedLeft: [],
 loadedContent: [],
+loadedProfile: [],
 loadedRight: [],
 user: {},
-onKeyDown: function(e){
-	var keyCode = e.keyCode || e.which;
-	if (keyCode == 13) {
-		if (aC.loginFocus) $("#b_login_splash").click();
-		else if (aC.registerFocus) $("#b_register").click();
-	}
+newestUpdate: 0,
+oldestUpdate: 0,
+timestamp: Date.now || function(){
+	return +new Date;
+},
+timestamp_sec: Date.now / 1000 || function(){
+	return +new Date / 1000;
 },
 stringToBoolean: function(string){
         switch(string.toLowerCase()) {
                 case "true": case "yes": case "1": return true;
                 case "false": case "no": case "0": case null: return false;
-                default: return Boolean(string);
+                default: return false;
         }
 },
 empty: function(mixed){
@@ -57,6 +59,11 @@ init: function(){
 		if (aC.stringToBoolean(response)) aC.logged = true;
 		if (!aC.logged) aC.loadModule('login');
 		else {
+			$.getJSON('ajax.php', {p:"userdata"}, function(response) {
+				aC.user = response;
+				if (aC.user.middlename != "") aC.user.fullname = aC.user.firstname+' '+aC.user.middlename+' '+aC.user.lastname;
+				else aC.user.fullname = aC.user.firstname+' '+aC.user.lastname;
+			});
 			if (aC.empty(aC.getHash())) {
 				aC.setPage('newsfeed');
 				aC.loadModule('home_newsfeed');
@@ -91,22 +98,31 @@ loadModule: function(module){
 	}
 	switch (target) {
 		case "left":
-			if ($.inArray(module,aC.loadedLeft) > -1){
-				$("#left").children().hide();
+			if ($.inArray(module,aC.loadedLeft) > -1) {
+				$("#left").show().children().hide();
 				$("#"+module).show();
 				return;
 			}
 		break;
 		case "content":
-			if ($.inArray(module,aC.loadedContent) > -1){
+			if ($.inArray(module,aC.loadedContent) > -1) {
 				$("#content").children().hide();
 				$("#"+module).show();
+				var profilePages = ['profile','about','photos','friends','posts','likes'];
+				if ($.inArray(aC.currentPage,profilePages) == -1) {
+					if ($("#right").is(":hidden")) aC.toggleModule('right');
+				}
+				return;
+			}
+		break;
+		case "profile":
+			if ($.inArray(module,aC.loadedProfile) > -1) {
 				return;
 			}
 		break;
 		case "right":
 			if ($.inArray(module,aC.loadedRight) > -1) {
-				$("#right").children().hide();
+				$("#right").show().children().hide();
 				$("#"+module).show();
 				return;
 			}
@@ -114,11 +130,15 @@ loadModule: function(module){
 	}
 	$.get('ajax.php', {p:module}, function(response) {
 		switch (target) {
-			case "left": aC.loadedLeft.push(module); $("#left").children().hide(); break;
+			case "left": aC.loadedLeft.push(module); $("#left").show().children().hide(); break;
 			case "content": aC.loadedContent.push(module); $("#content").children().hide(); break;
-			case "right": aC.loadedRight.push(module); $("#right").children().hide(); break;
+			case "right": aC.loadedRight.push(module); $("#right").show().children().hide(); break;
 		}
 		$("#"+target).append(response);
+		if (aC.currentPage == "newsfeed") {
+			$(".loadingMostRecent,.loadingMore").hide();
+			$(".loadMore").css('display','block');
+		}
 		/*
 		if (arguments.length > 1) {
 			if ($.isFunction(arguments[arguments.length - 1])) {
@@ -127,6 +147,25 @@ loadModule: function(module){
 		}
 		*/
 	});
+},
+toggleModule: function(module,callback) {
+	if (module == "left") {
+		if ($("#left").is(":hidden")) {
+			$("#left").animate({width:200}, 600);
+			$("#body").animate({left:200}, 600);
+		} else {
+			$("#left").animate({width:0}, 400);
+			$("#body").animate({left:0}, 400);
+		}
+	} else if (module == "right") {
+		if ($("#right").is(":hidden")) {
+			$("#right").show();
+			$("#content").css('width',568);
+		} else {
+			$("#right").hide();
+			$("#content").css('width',778);
+		}
+	}
 },
 login: function(){
 	var e = false,
@@ -152,6 +191,13 @@ login: function(){
 			}
 		});
 	}
+},
+logout: function(){
+	$.post('ajax.php', {logout:true}, function() {
+		$("#left,#right").animate({width:0}, 400, function(){ $("#left,#right").empty(); });
+		aC.setPage('login'); aC.setTitle(); aC.setHash(); aC.loadModule('login'); aC.logged = false;
+		$("#body").animate({left:0}, 400, function(){ $("#doc").addClass("out").removeClass("in"); });
+	});
 },
 regValidate: function(){
 	var e = false,
@@ -188,26 +234,159 @@ regValidate: function(){
 	if (e) return false;
 	else return true;
 },
-checkUsername: function(uname) {
+checkUsername: function(uname){
 	if (uname != "") {
-		$.get('ajax.php', {p:"username",username:uname}, function(data) {
-			if (aC.stringToBoolean(data)) $("#reg_username").addClass('error');
+		$.get('ajax.php', {p:"username",username:uname}, function(response) {
+			if (aC.stringToBoolean(response)) $("#reg_username").addClass('error');
 			else $("#reg_username").removeClass('error');
 		});
 	} else $("#reg_username").addClass('error');
 },
-logout: function() {
-	$.post('ajax.php', {logout:true}, function() {
-		$("#left,#right").animate({width:0}, 400, function(){ $("#left,#right").empty(); });
-		aC.setPage('login'); aC.setTitle(); aC.setHash(); aC.loadModule('login'); aC.logged = false;
-		$("#body").animate({left:0}, 400, function(){ $("#doc").addClass("out").removeClass("in"); });
-	});
+onKeyDown: function(e){
+	var keyCode = e.keyCode || e.which;
+	if (aC.logged) {
+
+	} else {
+		if (keyCode == 13) {
+			if (aC.loginFocus) $("#b_login_splash").click();
+			else if (aC.registerFocus) $("#b_register").click();
+		}
+	}
+},
+handleError: function(error){
+	return error;
+},
+addNewStatusUpdate: function(sid,status){
+	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
+	if (minutes < 10) { minutes = '0'+minutes; }
+	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
+	var time = hours + ":" + minutes + " " + prefix;
+	var s = '<li id="update-'+sid+'" style="display:none">';
+	s += '<div class="updateWrapper"><div class="updateTitle">';
+	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
+	s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+aC.user.fullname+'</a>';
+	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
+	s += '</div></div>';
+	s += '<div class="updateBody">'+status+'</div>';
+	s += '<div class="updateAttachments"></div>';
+	s += '<div class="updateActions">';
+	s += '<ul class="streamActions">';
+	s += '<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>';
+	s += '<li class="updateLikes"></li>';
+	s += '<li class="updateShares"></li>';
+	s += '<li class="updateOlderComments clickable"></li>';
+	s += '<li class="updateComments"></li>';
+	s += '<li class="updateNewComments clickable"></li>';
+	s += '<li class="updateComment">';
+	s += '<div class="updateCommentBox">';
+	s += '<form class="f_updateComment" action="#" method="post" onsubmit="return false">';
+	s += '<div id="updateComposer"><div class="commentBox"><div class="wrap"><div class="innerWrap">';
+	s += '<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>';
+	s += '</div></div></div></div>';
+	s += '<div class="buttonTools cf"><ul class="toolList rfloat">';
+	s += '<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>';
+	s += '</ul></div></form></div></li></ul></div></div></li>';
+	return s;
+},
+addStatusUpdate: function(sid,timestamp,status,username,image,name,likes,shares,oldcomments,comments,newcomments){
+	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
+	if (minutes < 10) { minutes = '0'+minutes; }
+	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
+	var time = hours + ":" + minutes + " " + prefix;
+	var s = '<li id="update-'+sid+'">';
+	s += '<div class="updateWrapper"><div class="updateTitle">';
+	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/'+username+'/images/thumb/'+image+'"/></a>';
+	s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+name+'</a>';
+	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
+	s += '</div></div>';
+	s += '<div class="updateBody">'+status+'</div>';
+	s += '<div class="updateAttachments"></div>';
+	s += '<div class="updateActions">';
+	s += '<ul class="streamActions">';
+	s += '<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>';
+	s += '<li class="updateLikes"><a href="#" class="updateLikesLink">'+likes+' likes</a> by '+likes+' others</li>';
+	s += '<li class="updateShares"><a href="#" class="updateSharesLink">'+shares+' shares</a> - '+shares+'</li>';
+	s += '<li class="updateOlderComments clickable"><a href="#" class="updateOlderCommentsLink">'+oldcomments+' older comments</a> from '+oldcomments+'</li>';
+	s += '<li class="updateComments"><ul class="streamComments"><li>'+comments+'</li></ul></li>';
+	s += '<li class="updateNewComments clickable"><a href="#" class="updateNewCommentsLink">'+newcomments+' more comments</a> from '+newcomments+'</li>';
+	s += '<li class="updateComment">';
+	s += '<div class="updateCommentBox">';
+	s += '<form class="f_updateComment" action="#" method="post" onsubmit="return false">';
+	s += '<div id="updateComposer"><div class="commentBox"><div class="wrap"><div class="innerWrap">';
+	s += '<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>';
+	s += '</div></div></div></div>';
+	s += '<div class="buttonTools cf"><ul class="toolList rfloat">';
+	s += '<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>';
+	s += '</ul></div></form></div></li></ul></div></div></li>';
+},
+addNewComment: function(cid,comment){
+	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
+	if (minutes < 10) { minutes = '0'+minutes; }
+	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
+	var time = hours + ":" + minutes + " " + prefix;
+	var c = '<li id="comment-'+cid+'">';
+	c += '<div class="commentWrapper">';
+	c += '<div class="commentContent">';
+	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
+	c += '<div class="commentNameBody">';
+	c += '<a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+comment+'</span>';
+	c += '</div>';
+	c += '<span class="expandComment"><a href="#" class="expandCommentLink">Expand this comment &#187;</a></span>';
+	c += '<span class="collapseComment"><a href="#" class="collapseCommentLink">Collapse this comment</a></span>';
+	c += '<div class="commentTimeTools">';
+	c += '<span class="commentTime" title="'+title+'">'+time+'</span></span>&nbsp;&nbsp;';
+	c += '<span class="commentTools"><a href="#" class="commentLikeLink">Like</a></span>';
+	c += '</div>';
+	c += '</div>';
+	c += '</div>';
+	c += '</li>';
+},
+addComment: function(cid,timestamp,comment,image,name){
+	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
+	if (minutes < 10) { minutes = '0'+minutes; }
+	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
+	var time = hours + ":" + minutes + " " + prefix;
+	var c = '<li id="comment-'+cid+'">';
+	c += '<div class="commentWrapper">';
+	c += '<div class="commentContent">';
+	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/Andrew/images/thumb/IMG_1271.JPG"/></a>';
+	c += '<div class="commentNameBody">';
+	c += '<a href="#" class="commentNameLink">Phillip Tunstall</a> - <span class="commentBody">Watch "Ghost in the Shell" to be better prepared...</span>';
+	c += '</div>';
+	c += '<span class="expandComment"><a href="#" class="expandCommentLink">Expand this comment &#187;</a></span>';
+	c += '<span class="collapseComment"><a href="#" class="collapseCommentLink">Collapse this comment</a></span>';
+	c += '<div class="commentTimeTools">';
+	c += '<span class="commentTime" title="Jul 28, 2011 9:13:25 AM">9:13 AM</span></span>&nbsp;&nbsp;';
+	c += '<span class="commentTools"><a href="#" class="commentLikeLink">Like</a></span>';
+	c += '</div>';
+	c += '</div>';
+	c += '</div>';
+	c += '</li>';
+},
+bbCode: function(text){
+	return;
 }
 };
 
 $(document.documentElement).keydown(aC.onKeyDown);
 $(document).ready(function(){ aC.init();
-$("#homeLink").live('click',function(){
+$(".homeLink").live('click',function(){
 	if (aC.logged) {
 		if (aC.currentPage != "newsfeed") {
 			aC.setPage('newsfeed'); aC.setHash(); aC.setTitle();
@@ -251,15 +430,15 @@ $("#b_login").live('click',function(){
 	aC.setPage('login'); aC.setTitle();
 	aC.loadModule('login');
 });
-$("#logout").live('click',function(){
+$("#headerLogoutLink").live('click',function(){
 	aC.logout();
 });
-$(".welcome_image,.welcome_name,#profileLink").live('click',function(){
+$(".welcome_image,.welcome_name,.profileLink").live('click',function(){
 	if (aC.currentPage != "profile") {
-		aC.setPage('profile'); aC.setHash('profile'); aC.setTitle('Profile Full Name',true);
+		aC.setPage('profile'); aC.setHash('profile'); aC.setTitle(aC.user.fullname,true);
+		aC.toggleModule('right');
 		aC.loadModule('profile');
 		aC.loadModule('profile_leftcol','left');
-		aC.loadModule('profile_rightcol','right');
 		$("#wallLink").click();
 	}
 });
@@ -288,9 +467,12 @@ $("#messagesLink").live('click',function(){
 	}
 });
 $("#friendsLink").live('click',function(){
-	if (aC.currentPage != "friends") {
-		aC.setPage('friends');
-		aC.loadModule('friends');
+	if (aC.currentPage != "profile") {
+		aC.setPage('profile'); aC.setHash('profile'); aC.setTitle(aC.user.fullname,true);
+		aC.toggleModule('right');
+		aC.loadModule('profile');
+		aC.loadModule('profile_leftcol','left');
+		$("#friendsLink").click();
 	}
 });
 $("#wallLink").live('click',function(){
@@ -300,9 +482,9 @@ $("#wallLink").live('click',function(){
 	}
 });
 $("#infoLink").live('click',function(){
-	if (aC.currentPage != "info") {
-		aC.setPage('info');
-		aC.loadModule('info');
+	if (aC.currentPage != "about") {
+		aC.setPage('about');
+		aC.loadModule('about');
 	}
 });
 $("#photosLink").live('click',function(){
@@ -310,6 +492,13 @@ $("#photosLink").live('click',function(){
 		aC.setPage('photos');
 		aC.loadModule('photos');
 	}
+});
+$(".updateNewsFeed").live('click',function(){
+	$(".loadingMostRecent").css('display','block');
+	$.getJSON('ajax.php', {p:"stream",id:aC.profileID,newest:aC.newestUpdate}, function(response) {
+		$("ul#stream").prepend(response);
+		$(".loadingMostRecent").hide();
+	});
 });
 $(".updateStatus .textarea").live('focus',function(){
 	$(this).css('max-height',400);
@@ -319,6 +508,54 @@ $(".updateStatus .textarea").live('focus',function(){
 		$(this).css('max-height',16);
 		$(".updateStatus .buttonTools").hide();
 	}
+});
+$("#share").live('click',function(){
+	if ($.trim($(".updateStatus .textarea").val()).length > 0) {
+		$.post("ajax.php", {p:"status",data:$.trim($(".updateStatus .textarea").val())}, function(response) {
+			if (response != "0") {
+				var s = aC.addNewStatusUpdate(response,$.trim($(".updateStatus .textarea").val()));
+				$(".updateStatus .textarea").val('').blur();
+				$("ul#stream").prepend(s);
+				$("ul#stream li:first").fadeIn();
+			}
+		});
+	}
+});
+$("ul#stream > li").live('click',function(){
+	$("ul#stream > li").removeClass('active borderActive');
+	$(this).addClass('active').prev().addClass('borderActive')
+	$(this).next().addClass('borderActive');
+});
+$(".updateComment .textarea").live('focus',function(){
+	$(this).css('max-height',300);
+	$(".updateComment .buttonTools").show();
+}).live('blur',function(){
+	if ($(this).val() == "") {
+		$(this).css('max-height',16);
+		$(".updateComment .buttonTools").hide();
+	}
+});
+$("#comment").live('click',function(){
+	if ($.trim($(".updateComment .textarea").val()).length > 0) {
+		$.post("ajax.php", {p:"comment",data:$.trim($(".updateComment .textarea").val())}, function(response) {
+			if (response != "0") {
+				var c = aC.addNewComment(response,$.trim($(".updateComment .textarea").val()));
+				$(".updateComment .textarea").val('').blur();
+				alert($(this).closest("ul#streamActions").children("ul#streamComments").html());
+				$(this).closest("ul#streamActions").children("ul#streamComments").append(c);
+				$(this).parents().find("ul#streamActions").children().find("ul#streamComments li:last").fadeIn();
+			}
+		});
+	}
+});
+$(".loadMore").live('click',function(){
+	$(this).hide();
+	$(".loadingMore").css('display','block');
+	$.getJSON('ajax.php', {p:"stream",uid:aC.profileID,oldest:aC.oldestUpdate}, function(response) {
+		$("ul#stream").append(response);
+		$(".loadingMore").hide();
+		$(".loadMore").show();
+	});
 });
 });
 
