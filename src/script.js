@@ -14,6 +14,8 @@ loadedRight: [],
 user: {},
 newestUpdate: 0,
 oldestUpdate: 0,
+newerUpdates: 0,
+noMoreUpdates: false,
 timestamp: Date.now || function(){
 	return +new Date;
 },
@@ -35,6 +37,19 @@ empty: function(mixed){
 		return true;
 	}
 	return false;
+},
+addSlashes: function(str){
+	return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+},
+stripSlashes: function(str){
+	return (str + '').replace(/\\(.?)/g, function (s, n1) {
+		switch (n1) {
+			case '\\': return '\\';
+			case '0': return '\u0000';
+			case '': return '';
+			default: return n1;
+		}
+	});
 },
 setPage: function(name){
 	aC.currentPage = name;
@@ -63,6 +78,9 @@ init: function(){
 				aC.user = response;
 				if (aC.user.middlename != "") aC.user.fullname = aC.user.firstname+' '+aC.user.middlename+' '+aC.user.lastname;
 				else aC.user.fullname = aC.user.firstname+' '+aC.user.lastname;
+				if (!aC.user.user_id) {
+					alert("refresh please");
+				}
 			});
 			if (aC.empty(aC.getHash())) {
 				aC.setPage('newsfeed');
@@ -72,7 +90,7 @@ init: function(){
 				aC.loadModule('header','header');
 				$("#left").animate({width:200}, 600);
 				$("#right").animate({width:210}, 600);
-				$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); });
+				$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $(".updateNewsFeed").click(); });
 			} else {
 				// handle module loading
 				aC.setPage('newsfeed');
@@ -82,8 +100,9 @@ init: function(){
 				aC.loadModule('header','header');
 				$("#left").animate({width:200}, 600);
 				$("#right").animate({width:210}, 600);
-				$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); });
+				$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $(".updateNewsFeed").click(); });
 			}
+			setInterval("aC.checkStreamUpdates()",30000);
 		}
 	});
 },
@@ -257,12 +276,13 @@ handleError: function(error){
 	return error;
 },
 addNewStatusUpdate: function(sid,status){
-	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
 	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
 	if (minutes < 10) { minutes = '0'+minutes; }
+	if (seconds < 10) { seconds = '0'+seconds; }
 	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
 	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
 	var time = hours + ":" + minutes + " " + prefix;
 	var s = '<li id="update-'+sid+'" style="display:none">';
@@ -292,48 +312,75 @@ addNewStatusUpdate: function(sid,status){
 	s += '</ul></div></form></div></li></ul></div></div></li>';
 	return s;
 },
-addStatusUpdate: function(sid,timestamp,status,username,image,name,likes,shares,oldcomments,comments,newcomments){
-	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
-	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
-	if (minutes < 10) { minutes = '0'+minutes; }
-	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
-	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
-	var time = hours + ":" + minutes + " " + prefix;
-	var s = '<li id="update-'+sid+'">';
-	s += '<div class="updateWrapper"><div class="updateTitle">';
-	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/'+username+'/images/thumb/'+image+'"/></a>';
-	s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+name+'</a>';
-	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
-	s += '</div></div>';
-	s += '<div class="updateBody">'+status+'</div>';
-	s += '<div class="updateAttachments"></div>';
-	s += '<div class="updateActions">';
-	s += '<ul class="streamActions">';
-	s += '<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>';
-	s += '<li class="updateLikes"><a href="#" class="updateLikesLink">'+likes+' likes</a> by '+likes+' others</li>';
-	s += '<li class="updateShares"><a href="#" class="updateSharesLink">'+shares+' shares</a> - '+shares+'</li>';
-	s += '<li class="updateOlderComments clickable"><a href="#" class="updateOlderCommentsLink">'+oldcomments+' older comments</a> from '+oldcomments+'</li>';
-	s += '<li class="updateComments"><ul class="streamComments"><li>'+comments+'</li></ul></li>';
-	s += '<li class="updateNewComments clickable"><a href="#" class="updateNewCommentsLink">'+newcomments+' more comments</a> from '+newcomments+'</li>';
-	s += '<li class="updateComment">';
-	s += '<div class="updateCommentBox">';
-	s += '<form class="f_updateComment" action="#" method="post" onsubmit="return false">';
-	s += '<div id="updateComposer"><div class="commentBox"><div class="wrap"><div class="innerWrap">';
-	s += '<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>';
-	s += '</div></div></div></div>';
-	s += '<div class="buttonTools cf"><ul class="toolList rfloat">';
-	s += '<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>';
-	s += '</ul></div></form></div></li></ul></div></div></li>';
+addStatusUpdates: function(data,type){
+	var s = "";
+	$.each(data,function(i,v){
+		if (type == "new") {
+			if (i == 0) aC.newestUpdate = v.timestamp;
+			if (aC.oldestUpdate == 0 && i == data.length-1) aC.oldestUpdate = v.timestamp;
+		} else if (type == "old") {
+			if (i == data.length-1) aC.oldestUpdate = v.timestamp;
+		}
+		var datetime = new Date(parseInt(v.timestamp + '000')), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
+		if (hours > 12) { hours = hours - 12; prefix = "PM"; }
+		if (minutes < 10) { minutes = '0'+minutes; }
+		if (seconds < 10) { seconds = '0'+seconds; }
+		var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+		var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+		var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
+		var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
+		var time = hours + ":" + minutes + " " + prefix;
+		if (v.default_image != "") var image = "/uploads/"+v.username+"/images/thumb/"+v.default_image;
+		else var image = "i/mem/default.jpg";
+		if (v.middlename != "") var fullname = v.firstname + " " + v.middlename + " " + v.lastname;
+		else var fullname = v.firstname + " " + v.lastname;
+		var likes = v.likes;
+		var shares = "";
+		var oldcomments = "";
+		var comments = "";
+		var newcomments = "";
+		var likesA = ""; if (v.likes > 0) likesA = " active";
+		var sharesA = ""; if (shares != "") sharesA = " active";
+		var oldcA = ""; if (oldcomments != "") oldcA = " active";
+		var cA = ""; if (comments != "") cA = " active";
+		var newcA = ""; if (newcomments != "") newcA = " active";
+		var ucA = ""; if (v.likes > 0 || shares != "" || oldcomments != "" || comments != "" || newcomments != "") ucA = " active";
+		s += '<li id="update-'+v.sid+'">';
+		s += '<div class="updateWrapper"><div class="updateTitle">';
+		s += '<a href="#" class="updateImageLink"><img class="updateImg" src="'+image+'"/></a>';
+		s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+fullname+'</a>';
+		s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
+		s += '</div></div>';
+		s += '<div class="updateBody">'+aC.stripSlashes(v.data)+'</div>';
+		s += '<div class="updateAttachments"></div>';
+		s += '<div class="updateActions">';
+		s += '<ul class="streamActions">';
+		s += '<li class="updateLinks"><a href="#" class="updateLikeLink">Like</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateCommentLink">Comment</a>&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateShareLink">Share</a></li>';
+		s += '<li class="updateLikes'+likesA+'"><a href="#" class="updateLikesLink">'+v.likes+' likes</a> by '+likes+' others</li>';
+		s += '<li class="updateShares'+sharesA+'"><a href="#" class="updateSharesLink">'+shares+' shares</a> - '+shares+'</li>';
+		s += '<li class="updateOlderComments clickable'+oldcA+'"><a href="#" class="updateOlderCommentsLink">'+oldcomments+' older comments</a> from '+oldcomments+'</li>';
+		s += '<li class="updateComments'+cA+'"><ul class="streamComments"><li>'+comments+'</li></ul></li>';
+		s += '<li class="updateNewComments clickable'+newcA+'"><a href="#" class="updateNewCommentsLink">'+newcomments+' more comments</a> from '+newcomments+'</li>';
+		s += '<li class="updateComment'+ucA+'">';
+		s += '<div class="updateCommentBox">';
+		s += '<form class="f_updateComment" action="#" method="post" onsubmit="return false">';
+		s += '<div id="updateComposer"><div class="commentBox"><div class="wrap"><div class="innerWrap">';
+		s += '<textarea class="textarea" placeholder="Add a comment..." cols="30" rows="4"></textarea>';
+		s += '</div></div></div></div>';
+		s += '<div class="buttonTools cf"><ul class="toolList rfloat">';
+		s += '<li class="listItem"><label class="commentButton" for="comment"><input value="Add comment" type="submit" id="comment"/></label></li>';
+		s += '</ul></div></form></div></li></ul></div></div></li>';
+	});
+	return s;
 },
 addNewComment: function(cid,comment){
-	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
 	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
 	if (minutes < 10) { minutes = '0'+minutes; }
+	if (seconds < 10) { seconds = '0'+seconds; }
 	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
 	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
 	var time = hours + ":" + minutes + " " + prefix;
 	var c = '<li id="comment-'+cid+'">';
@@ -353,13 +400,14 @@ addNewComment: function(cid,comment){
 	c += '</div>';
 	c += '</li>';
 },
-addComment: function(cid,timestamp,comment,image,name){
-	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes();
+addComments: function(cid,timestamp,comment,image,name){
+	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
 	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
 	if (minutes < 10) { minutes = '0'+minutes; }
+	if (seconds < 10) { seconds = '0'+seconds; }
 	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-	var timesecs = hours + ":" + minutes + ":" + datetime.getSeconds() + " " + prefix;
+	var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
 	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDay() + ", " + datetime.getFullYear() + " " + timesecs;
 	var time = hours + ":" + minutes + " " + prefix;
 	var c = '<li id="comment-'+cid+'">';
@@ -381,6 +429,15 @@ addComment: function(cid,timestamp,comment,image,name){
 },
 bbCode: function(text){
 	return;
+},
+checkStreamUpdates: function(){
+	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate}, function(response) {
+		if (response != "0") {
+			aC.newerUpdates = response["data"].length;
+			$(".mostRecentCountValue").html(response["data"].length);
+			$(".mostRecentCount").show();
+		}
+	});
 }
 };
 
@@ -493,13 +550,6 @@ $("#photosLink").live('click',function(){
 		aC.loadModule('photos');
 	}
 });
-$(".updateNewsFeed").live('click',function(){
-	$(".loadingMostRecent").css('display','block');
-	$.getJSON('ajax.php', {p:"stream",id:aC.profileID,newest:aC.newestUpdate}, function(response) {
-		$("ul#stream").prepend(response);
-		$(".loadingMostRecent").hide();
-	});
-});
 $(".updateStatus .textarea").live('focus',function(){
 	$(this).css('max-height',400);
 	$(".updateStatus .buttonTools").show();
@@ -513,7 +563,10 @@ $("#share").live('click',function(){
 	if ($.trim($(".updateStatus .textarea").val()).length > 0) {
 		$.post("ajax.php", {p:"status",data:$.trim($(".updateStatus .textarea").val())}, function(response) {
 			if (response != "0") {
-				var s = aC.addNewStatusUpdate(response,$.trim($(".updateStatus .textarea").val()));
+				response = $.parseJSON(response);
+				if (aC.newerUpdates > 0) $(".updateNewsFeed").click();
+				else aC.newestUpdate = aC.timestamp_sec;
+				var s = aC.addNewStatusUpdate(response["data"].insertid,response["data"].status);
 				$(".updateStatus .textarea").val('').blur();
 				$("ul#stream").prepend(s);
 				$("ul#stream li:first").fadeIn();
@@ -548,11 +601,33 @@ $("#comment").live('click',function(){
 		});
 	}
 });
+$(".updateNewsFeed").live('click',function(){
+	$(".mostRecentCount").hide();
+	$(".mostRecentCountValue").empty();
+	aC.newerUpdates = 0;
+	$(".loadingMostRecent").css('display','block');
+	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate}, function(response) {
+		if (response != "0") {
+			var s = aC.addStatusUpdates(response["data"],"new");
+			$("ul#stream").prepend(s);
+		}
+		$(".loadingMostRecent").hide();
+	});
+});
 $(".loadMore").live('click',function(){
 	$(this).hide();
 	$(".loadingMore").css('display','block');
-	$.getJSON('ajax.php', {p:"stream",uid:aC.profileID,oldest:aC.oldestUpdate}, function(response) {
-		$("ul#stream").append(response);
+	$.getJSON('ajax.php', {p:"stream",oldest:aC.oldestUpdate}, function(response) {
+		if (response != "0") {
+			var s = aC.addStatusUpdates(response["data"],"old");
+			$("ul#stream").append(s);
+		} else {
+			if (!aC.noMoreUpdates) {
+				$("ul#stream").append('<div class="noMoreUpdates">No More Updates Available!</div>');
+				aC.noMoreUpdates = true;
+				$(".loadMoreLink").hide();
+			}
+		}
 		$(".loadingMore").hide();
 		$(".loadMore").show();
 	});

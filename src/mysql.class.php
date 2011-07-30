@@ -2,6 +2,7 @@
 require 'mysql.config.php';
 class MySQL {
 private $result;
+private $data;
 public function __construct($host = MYSQL_HOST, $user = MYSQL_USER, $password = MYSQL_PASSWORD, $database = MYSQL_DATABASE) {
 	if (!$con = mysql_connect($host,$user,$password)) {
 		throw new Exception('Error connecting to the server');
@@ -35,6 +36,7 @@ public function numRows() {
 
 public function fetchRow() {
 	while ($row = mysql_fetch_array($this->result)) {
+		$this->data = $row;
 		return $row;
 	}
 	return false;
@@ -46,6 +48,7 @@ public function fetchAll($table='info') {
 	while ($row = $this->fetchRow()) {
 		$rows[] = $row;
 	}
+	$this->data = $rows;
 	return $rows;
 }
 
@@ -54,12 +57,35 @@ public function fetchRows() {
 	while ($row = $this->fetchRow()) {
 		$rows[] = $row;
 	}
+	$this->data = $rows;
 	return $rows;
 }
 
 public function fetchAssocRow() {
-	if ($row = mysql_fetch_assoc($this->result)) return $row;
-	else return false;
+	while ($row = mysql_fetch_assoc($this->result)) {
+		$this->data = $row;
+		return $row;
+	}
+	return false;
+}
+
+public function fetchAssocAll($table='info') {
+	$this->query('SELECT * FROM '.$table);
+	$rows = array();
+	while ($row = $this->fetchAssocRow()) {
+		$rows[] = $row;
+	}
+	$this->data = $rows;
+	return $rows;
+}
+
+public function fetchAssocRows() {
+	$rows = array();
+	while ($row = $this->fetchAssocRow()) {
+		$rows[] = $row;
+	}
+	$this->data = $rows;
+	return $rows;
 }
 
 public function insert($table, $params) {
@@ -68,8 +94,12 @@ public function insert($table, $params) {
 	$this->query('INSERT INTO `'.$table.'` (`'.implode('`,`', $keys).'`) VALUES (\''.implode('\',\'', $values).'\')');
 }
 
+public function resultDebug() {
+	return print_r($this->data);
+}
+
 public function insertID() {
-	return mysql_insert_id($this->result);
+	return mysql_insert_id();
 }
 
 public function affectedRows() {

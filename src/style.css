@@ -292,7 +292,7 @@ text-decoration:underline;
 .welcome_name {
 display:block;
 font-weight:bold;
-padding: 4px 0 1px;
+padding:4px 0 1px;
 }
 
 .welcome_editlink {
@@ -416,7 +416,6 @@ margin-top:3px;
 .updateNewsFeed {
 display:block;
 text-align:right;
-width:96px;
 }
 
 .loadingMostRecent {
@@ -427,7 +426,24 @@ display:block;
 float:left;
 height:16px;
 text-align:center;
-width:16px;
+width:22px;
+}
+
+.mostRecentCount {
+background-color:#d8dfea;
+border-radius:2px;
+-khtml-border-radius:2px;
+-moz-border-radius:2px;
+-webkit-border-radius:2px;
+color:#666;
+display:none;
+font-weight:bold;
+margin-left:6px;
+padding:0 4px;
+}
+
+.updateNewsFeed:hover .mostRecentCount {
+background-color:#eff2f7;
 }
 
 .updateStatus {
@@ -448,7 +464,7 @@ border-left:1px solid #ccc;
 
 .updateStatus .innerWrap {
 border:solid #b4bbcd;
-border-width: 0 1px 1px 0;
+border-width:0 1px 1px 0;
 padding:5px;
 }
 
@@ -476,16 +492,16 @@ word-wrap:break-word;
 }
 
 #stream > li {
-border-bottom: 1px solid transparent;
-border-left: 1px solid transparent;
-border-top: 1px solid #eee;
+border-bottom:1px solid transparent;
+border-left:1px solid transparent;
+border-top:1px solid #eee;
 padding:16px 44px 0 80px;
 }
 
 #stream > li.active {
-border-bottom: 1px solid #ddd;
+border-bottom:1px solid #ddd;
 border-left:1px solid #4d90f0;
-border-top: 1px solid #ddd;
+border-top:1px solid #ddd;
 }
 
 #stream > li.borderActive {
@@ -599,7 +615,7 @@ padding:6px 0 4px;
 }
 
 ul.streamComments > li:not(:last-child) .commentWrapper {
-border-bottom: 1px dotted #CCC;
+border-bottom:1px dotted #CCC;
 }
 
 .commentContent {
@@ -655,7 +671,7 @@ border-left:1px solid #ccc;
 
 .updateComment .innerWrap {
 border:solid #b4bbcd;
-border-width: 0 1px 1px 0;
+border-width:0 1px 1px 0;
 padding:5px;
 }
 
@@ -668,6 +684,15 @@ padding:0;
 resize:none;
 vertical-align:bottom;
 width:100%;
+}
+
+.noMoreUpdates {
+background-color:#f4f4f4;
+border-top:1px solid #e3e3e3;
+color:#ccc;
+font-weight:bold;
+padding:15px;
+text-align:center;
 }
 
 .loadMoreLink {
