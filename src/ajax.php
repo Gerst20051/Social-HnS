@@ -5,7 +5,6 @@ if (isset($_GET['p']) && $_GET['p'] == 'logged') {
 	if (isset($_SESSION['logged'])) die('true'); else die('0');
 }
 
-include 'validip.inc.php';
 include 'mysql.class.php';
 
 function isint($mixed) {
@@ -39,6 +38,10 @@ function logOut() {
 	session_destroy();
 }
 
+function usersOnline() {
+
+}
+
 if (isset($_SESSION['logged'])) {
 loggedIn();
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -54,14 +57,10 @@ try {
 		'timestamp'=>time(),
 		'type'=>1,
 		'data'=>addslashes($status),
-		'block'=>'0,'
+		'likes'=>0
 	));
 	if ($db->affectedRows() == 1) {
 		$db_insertid = $db->insertID();
-		$db->insert('likes', array(
-			'oid'=>$db_insertid,
-			'likes'=>'0'
-		));
 		$urlex = '/\b(([^:\/?#]+):)(\/\/([^\/?#]*))([^?#]*)(\?([^#]*))?(#(.*))?/i';
 		$contentArray = explode(" ",$status);
 		$linkArray = array();
@@ -75,50 +74,19 @@ try {
 					$db->insert('stream', array(
 						'timestamp'=>time(),
 						'type'=>4,
-						'data'=>$link[0]
+						'data'=>$link[0],
+						'likes'=>1
 					));
-					$db->insert('likes', array(
-						'oid'=>$db->insertID(),
-						'likes'=>0,
-					));
+				} else {
+					$oid = $db->fetchRow();
+					$db->query('UPDATE stream SET likes = likes+1 WHERE sid = '.$oid);
 				}
 			}
 		}
 		$final = array(
 			"data"=>array(
 				"insertid"=>$db_insertid,
-				"status"=>addslashes($status),
-			),
-			"error"=>false
-		);
-		print_r(json_encode($final));
-	} else die('0');
-} catch(Exception $e) {
-	echo $e->getMessage();
-	exit();
-}
-} elseif ($_POST['p'] == 'comment') {
-die('1');
-try {
-	$comment = addslashes(strip_tags($_POST['data']));
-	$db = new MySQL();
-	$db->insert('stream', array(
-		'owner'=>$_SESSION['user_id'],
-		'timestamp'=>time(),
-		'type'=>2,
-		'data'=>$comment
-	));
-	if ($db->affectedRows() == 1) {
-		$db_insertid = $db->insertID();
-		$db->insert('likes', array(
-			'oid'=>$db_insertid,
-			'likes'=>'0'
-		));
-		header('Content-Type: text/javascript; charset=utf8');
-		$final = array(
-			"data"=>array(
-				"insertid"=>$db_insertid,
-				"comment"=>$comment,
+				"status"=>addslashes($status)
 			),
 			"error"=>false
 		);
@@ -129,7 +97,88 @@ try {
 	exit();
 }
 } elseif ($_POST['p'] == 'like') {
-
+try {
+	$db = new MySQL();
+	$db->query('SELECT likes,ids FROM stream WHERE sid = '.$_POST['oid']);
+	if ($db->numRows() == 1) {
+		$result = $db->fetchAssocRow();
+		$result["ids"] = json_decode($result["ids"]);
+		if (is_array($result["ids"])) {
+			if (!in_array($_SESSION['user_id'],$result["ids"])) array_push($result["ids"],$_SESSION['user_id']);
+			else die('0');
+		} else $result["ids"] = array($_SESSION['user_id']);
+		$db->query('UPDATE stream SET likes = likes+1, ids = \''.json_encode($result["ids"]).'\' WHERE sid = '.$_POST['oid']);
+		if ($db->affectedRows() > 0) {
+			header('Content-Type: text/javascript; charset=utf8');
+			$final = array(
+				"likes"=>$result["likes"],
+				"ids"=>$result["ids"],
+				"error"=>false
+			);
+			print_r(json_encode($final));
+		} else die('0');
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+} elseif ($_POST['p'] == 'comment') {
+try {
+	$comment = addslashes(strip_tags($_POST['data']));
+	$db = new MySQL();
+	$db->query('SELECT comments FROM stream WHERE sid = '.$_POST['oid']);
+	if ($db->numRows() == 1) {
+		$result = json_decode($db->fetchAssocRow());
+		$data = array(
+			'owner'=>$_SESSION['user_id'],
+			'timestamp'=>time(),
+			'data'=>$comment,
+			'likes'=>0,
+			'ids'=>array()
+		);
+		if (!is_array($result)) $result = array();
+		array_push($result,$data);
+		$db->query('UPDATE stream SET comments = \''.json_encode($result).'\' WHERE sid = '.$_POST['oid']);
+		if ($db->affectedRows() > 0) {
+			header('Content-Type: text/javascript; charset=utf8');
+			$final = array(
+				"data"=>$comments,
+				"error"=>false
+			);
+			print_r(json_encode($final));
+		} else die('0');
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+} elseif ($_POST['p'] == 'share') {
+try {
+	$comment = addslashes(strip_tags($_POST['data']));
+	$db = new MySQL();
+	$db->insert('stream', array(
+		'owner'=>$_SESSION['user_id'],
+		'timestamp'=>time(),
+		'type'=>2,
+		'data'=>$comment,
+		'likes'=>0,
+		'ids'=>$_POST['oid']
+	));
+	if ($db->affectedRows() == 1) {
+		header('Content-Type: text/javascript; charset=utf8');
+		$final = array(
+			"data"=>array(
+				"insertid"=>$db->insertID(),
+				"comment"=>$comment
+			),
+			"error"=>false
+		);
+		print_r(json_encode($final));
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
 }
 }
 } elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
@@ -139,7 +188,7 @@ try {
 	$db = new MySQL();
 	if (!isset($_GET['uid'])) $uid = $_SESSION['user_id'];
 	else $uid = $_GET['uid'];
-	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.followers,i.default_image FROM login u JOIN info i ON u.user_id = i.user_id WHERE u.user_id = '.$uid);
+	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.default_image,h.followers FROM (login u JOIN info i ON u.user_id = i.user_id) JOIN socialhns h ON u.user_id = h.user_id WHERE u.user_id = '.$uid);
 	if ($db->numRows() == 1) {
 		header('Content-Type: text/javascript; charset=utf8');
 		print_r(json_encode($db->fetchRow()));
@@ -308,7 +357,7 @@ Edit Profile
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="photosLink" class="item" href="#friends">
+<a id="photosLink" class="item" href="#photos">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Photos</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
@@ -348,9 +397,16 @@ Photos
 </div>
 <?php
 } elseif ($_GET['p'] == 'stream') {
+include 'validip.inc.php';
+$timestamp = time();
+$timeout = $timestamp-600;
 try {
 	$db = new MySQL();
-	$followers = array(1,2,25,129);
+	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s","%s")',$timestamp,$ip,$_SESSION['user_id'],$_SESSION['username'],'/socialhns/#'.$_GET['hash']));
+	$db->query("DELETE FROM users_online WHERE timestamp < $timeout");
+	$db->query('SELECT followers FROM socialhns WHERE user_id = '.$_SESSION['user_id']);
+	$followers = array();
+	for ($i=1;$i<201;$i++) array_push($followers,$i);
 	if (!empty($followers)) $ownerlist = $_SESSION['user_id'].','.implode(',', $followers);
 	else $ownerlist = $_SESSION['user_id'];
 	$limit = ' LIMIT 20';
@@ -360,13 +416,35 @@ try {
 	} elseif (isset($_GET['oldest']) && isint($_GET['oldest'])) {
 		$oldest = $_GET['oldest'];
 		$timestamp = 'AND s.timestamp < '.$oldest.' ';
-		$limit = ' LIMIT 10';
+		$limit = ' LIMIT 30';
 	}
-	$db->query('SELECT s.sid,s.owner,s.timestamp,s.type,s.data,s.block,l.likes,u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM (stream s JOIN likes l ON s.sid = l.oid) JOIN login u ON s.owner = u.user_id JOIN info i ON s.owner = i.user_id WHERE s.owner IN ('.$ownerlist.') '.$timestamp.'AND s.block NOT LIKE "%,'.$_SESSION['user_id'].',%" ORDER BY s.sid DESC'.$limit);
+	$db->query('SELECT s.sid,s.owner,s.timestamp,s.type,s.data,s.likes,s.comments,s.shares,s.block,s.ids,u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM (stream s JOIN login u ON s.owner = u.user_id) JOIN info i ON s.owner = i.user_id WHERE s.owner IN ('.$ownerlist.') '.$timestamp.'AND s.type = 1 AND s.block NOT LIKE "%,'.$_SESSION['user_id'].',%" ORDER BY s.sid DESC'.$limit);
 	if ($db->numRows() > 0) {
 		header('Content-Type: text/javascript; charset=utf8');
 		$rows = $db->fetchAssocRows();
-		for ($i=0;$i<count($rows);$i++) unset($rows[$i]["block"]);
+		for ($i=0;$i<count($rows);$i++) {
+			unset($rows[$i]["block"]);
+			/*
+			$comments = json_decode($rows[$i]["comments"]);
+			foreach($comments as $key=>$comment) {
+				if (is_array($comment)) die($key);
+			}
+			*/
+			/*
+			$output = "";
+			for ($i=0;$i<count($comments);$i++) {
+				$output .= $comments[$i];
+			}
+			die($output);
+			*/
+			//foreach($comments as $key=>$comment) {
+				//if (isset($comments[$key]["owner"]) && !empty($comments[$key]["owner"])) print_r($comments[$key]["owner"]);
+				//$db->query('SELECT u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM login u JOIN info i ON u.user_id = i.user_id WHERE u.user_id = '.$comment["owner"]);
+				//array_push($db->fetchAssocRow(),$comments[$key]);
+				//$rows[$i]["comments"] = $comment;
+			//}
+			//die(print_r($comments));
+		}
 		$final = array(
 			"data"=>$rows,
 			"error"=>false
@@ -406,8 +484,8 @@ try {
 	echo $e->getMessage();
 	exit();
 }
-}
-if (isset($_POST['register'])) {
+} elseif (isset($_POST['register'])) {
+include 'validip.inc.php';
 function ucname($string) {
 	$string = ucwords(strtolower($string));
 	foreach (array('-', '\'', 'Mc') as $delimiter) {
@@ -422,14 +500,14 @@ $password = (isset($_POST['password'])) ? $_POST['password'] : '';
 $name = (isset($_POST['name'])) ? ucname($_POST['name']) : '';
 $email = (isset($_POST['email'])) ? $_POST['email'] : '';
 $hometown = (isset($_POST['hometown'])) ? $_POST['hometown'] : '';
-$community = (isset($_POST['city'])) ? $_POST['city'] : '';
+$current_city = (isset($_POST['city'])) ? $_POST['city'] : '';
 $gender = (isset($_POST['gender'])) ? $_POST['gender'] : '';
 $bmonth = (isset($_POST['bmonth'])) ? $_POST['bmonth'] : '';
 $bday = (isset($_POST['bday'])) ? $_POST['bday'] : '';
 $byear = (isset($_POST['byear'])) ? $_POST['byear'] : '';
-if (empty($community)) $community = $hometown;
+if (empty($current_city)) $current_city = $hometown;
 list($firstname, $middlename, $lastname) = split(' ',$name);
-if (!isset($lastname)) { $lastname = $middlename; unset($middlename); }
+if (!isset($lastname)) { $lastname = $middlename; $middlename = ''; }
 try {
 	$db = new MySQL();
 	$db->insert('login', array(
@@ -437,7 +515,8 @@ try {
 		'access_level'=>1,
 		'last_login'=>date('Y-m-d'),
 		'date_joined'=>date('Y-m-d'),
-		'last_login_ip'=>$ip
+		'last_login_ip'=>$ip,
+		'logins'=>1
 	));
 	$user_id = $db->insertID();
 	$db->query('UPDATE login SET pass = PASSWORD("'.mysql_real_escape_string($password).'") WHERE user_id = '.$user_id);
@@ -449,12 +528,14 @@ try {
 		'email'=>$email,
 		'gender'=>$gender,
 		'hometown'=>$hometown,
-		'community'=>$community,
+		'current_city'=>$current_city,
 		'birth_month'=>$bmonth,
 		'birth_day'=>$bday,
-		'birth_year'=>$byear,
-		'logins'=>1
+		'birth_year'=>$byear
 	));
+	$db->insert('socialhns', array('user_id'=>$user_id));
+	$db->insert('hns_desktop', array('user_id'=>$user_id));
+	$db->insert('homenetspaces', array('user_id'=>$user_id));
 	if ($db->affectedRows() == 1) {
 		$_SESSION['logged'] = true;
 		$_SESSION['user_id'] = $user_id;
@@ -462,10 +543,11 @@ try {
 		$_SESSION['access_level'] = 1;
 		$_SESSION['last_login'] = date('Y-m-d');
 		$_SESSION['last_login_ip'] = $ip;
-		if (isset($middlename) && !empty($middlename)) $_SESSION['fullname'] = $firstname . ' ' . $middlename . ' ' . $lastname;
-		else $_SESSION['fullname'] = $firstname . ' ' . $lastname;
-		$_SESSION['firstname'] = $row['firstname'];
-		if (isset($row['middlename']) && !empty($row['middlename'])) $_SESSION['middlename'] = $middlename;
+		if (isset($middlename) && !empty($middlename)) {
+			$_SESSION['fullname'] = $firstname . ' ' . $middlename . ' ' . $lastname;
+			$_SESSION['middlename'] = $middlename;
+		} else $_SESSION['fullname'] = $firstname . ' ' . $lastname;
+		$_SESSION['firstname'] = $firstname;
 		$_SESSION['lastname'] = $lastname;
 		die('true');
 	} else die('false');
@@ -474,6 +556,18 @@ try {
 	exit();
 }
 loggedIn();
+} elseif (isset($_POST['offlineUpdate'])) {
+include 'validip.inc.php';
+$timestamp = time();
+$timeout = $timestamp-600;
+try {
+	$db = new MySQL();
+	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s","%s")',$timestamp,$ip,0,'guest','/socialhns/#'.$_POST['hash']));
+	$db->query("DELETE FROM users_online WHERE timestamp < $timeout");
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
 }
 } elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
 if (isset($_GET['p'])) {

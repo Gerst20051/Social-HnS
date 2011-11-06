@@ -33,5 +33,6 @@ function getip() {
 	else return $_SERVER["REMOTE_ADDR"];
 }
 
-$ip = getip();
+// $ip = getip();
+$ip = '0.0.0.0';
 ?>
