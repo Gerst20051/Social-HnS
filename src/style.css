@@ -679,7 +679,7 @@ ul.streamComments > li {
 color:#111;
 }
 
-ul.streamComments > li:hover .commentTools{
+ul.streamComments > li:hover .commentTools {
 display:inline;
 }
 
@@ -725,6 +725,15 @@ color:#999;
 
 .commentTools {
 display:none;
+}
+
+.commentLikesLink {
+display:none;
+font-weight:bold;
+}
+
+.commentLikesLink.active {
+display:inline;
 }
 
 .updateComment {

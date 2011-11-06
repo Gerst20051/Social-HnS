@@ -93,7 +93,10 @@ init: function(){
 	$.get('ajax.php', {p:"logged"}, function(response) {
 		if (aC.stringToBoolean(response)) aC.logged = true;
 		if (!aC.logged) {
-			aC.loadModule('login');
+			if (aC.getHash() == "register") {
+				aC.loadModule('register');
+				aC.setTitle('Register');
+			} else aC.loadModule('login');
 			$.post('ajax.php',{offlineUpdate:true,hash:aC.getHash()});
 		} else aC.loggedIn();
 	});
@@ -186,28 +189,16 @@ loggedIn: function(){
 			if (aC.user.middlename != "") aC.user.fullname = aC.user.firstname+' '+aC.user.middlename+' '+aC.user.lastname;
 			else aC.user.fullname = aC.user.firstname+' '+aC.user.lastname;
 		});
-		if (aC.empty(aC.getHash())) {
-			$("#content").empty();
-			aC.setPage('newsfeed');
-			aC.loadModule('home_newsfeed');
-			aC.loadModule('home_leftcol','left');
-			aC.loadModule('home_rightcol','right');
-			aC.loadModule('header','header');
-			$("#left").animate({width:200}, 600);
-			$("#right").animate({width:210}, 600);
-			$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $('.updateNewsFeed').click(); });
-		} else {
-			// handle module loading
-			$("#content").empty();
-			aC.setPage('newsfeed');
-			aC.loadModule('home_newsfeed');
-			aC.loadModule('home_leftcol','left');
-			aC.loadModule('home_rightcol','right');
-			aC.loadModule('header','header');
-			$("#left").animate({width:200}, 600);
-			$("#right").animate({width:210}, 600);
-			$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $('.updateNewsFeed').click(); });
-		}
+		$("#content").empty();
+		aC.setPage('newsfeed');
+		aC.loadModule('home_newsfeed');
+		aC.loadModule('home_leftcol','left');
+		aC.loadModule('home_rightcol','right');
+		aC.loadModule('header','header');
+		if (!aC.empty(aC.getHash())) aC.handleHash();
+		$("#left").animate({width:200}, 600);
+		$("#right").animate({width:210}, 600);
+		$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $('.updateNewsFeed').click(); });
 		aC.streamInterval = setInterval(function(){ aC.checkStreamUpdates() },30000);
 	}
 },
@@ -291,9 +282,7 @@ checkUsername: function(uname){
 },
 onKeyDown: function(e){
 	var keyCode = e.keyCode || e.which;
-	if (aC.logged) {
-
-	} else {
+	if (!aC.logged) {
 		if (keyCode == 13) {
 			if (aC.loginFocus) $("#b_login_splash").click();
 			else if (aC.registerFocus) $("#b_register").click();
@@ -302,6 +291,9 @@ onKeyDown: function(e){
 },
 handleError: function(error){
 	return error;
+},
+handleHash: function(){
+	var hash = aC.getHash();
 },
 addNewStatusUpdate: function(sid,status){
 	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
@@ -316,7 +308,9 @@ addNewStatusUpdate: function(sid,status){
 	var time = hours + ":" + minutes + " " + prefix;
 	var s = '<li id="update-'+sid+'" class="streamItem" style="display:none">';
 	s += '<div class="updateWrapper"><div class="updateTitle">';
-	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
+	if (aC.user.default_image != "") var image = "/uploads/"+aC.user.username+"/images/thumb/"+aC.user.default_image;
+	else var image = "i/mem/default.jpg";
+	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="'+image+'"/></a>';
 	s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+aC.user.fullname+'</a>';
 	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
 	s += '<span class="updateEdit">&nbsp;&nbsp;<span class="link updateEditLink">Edit</span></span>';
@@ -352,7 +346,7 @@ addNewStatusUpdate: function(sid,status){
 	return s;
 },
 addStatusUpdates: function(data,type){
-	var s = ""; aC.streamUpdates = data; aC.currentTime = aC.timestamp_sec();
+	var s = ""; aC.currentTime = aC.timestamp_sec();
 	$.each(data,function(i,v){
 		if (type == "new") {
 			if (i == 0) aC.newestUpdate = v.timestamp;
@@ -360,7 +354,6 @@ addStatusUpdates: function(data,type){
 		} else if (type == "old") {
 			if (i == data.length-1) aC.oldestUpdate = v.timestamp;
 		}
-		var currentDatetime = new Date(), currentDate = currentDatetime.getDate();
 		var datetime = new Date(parseInt(v.timestamp + '000')), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
 		if (hours > 12) { hours = hours - 12; prefix = "PM"; }
 		else if (hours == 0) hours = 12;
@@ -381,7 +374,16 @@ addStatusUpdates: function(data,type){
 		var likes = "";
 		var shares = ""; var vshares = 0;
 		var oldComments = ""; var voldComments = 0;
-		var comments = ""; var vcomments = 0;
+		var comments = "";
+		if (!aC.empty(v.comments)) {
+			$.each(v.comments, function(a,b){
+				if (b.user.default_image != "") var image = "/uploads/"+b.user.username+"/images/thumb/"+b.user.default_image;
+				else var image = "i/mem/default.jpg";
+				if (b.user.middlename != "") var fullname = b.user.firstname + " " + b.user.middlename + " " + b.user.lastname;
+				else var fullname = b.user.firstname + " " + b.user.lastname;
+				comments += aC.addComment(a,b.owner,b.timestamp,b.data,image,fullname,b.likes,b.ids);
+			});
+		}
 		var newComments = ""; var vnewComments = 0;
 		var likesCount = "likes";
 		var sharesCount = "shares";
@@ -396,7 +398,8 @@ addStatusUpdates: function(data,type){
 				if (v.likes == 1) likes = "You";
 				else likes = "You and " + v.likes-1 + " others";
 			} else {
-				likes = v.likes + " others";
+				if (v.likes == 1) likes = v.likes + " other";
+				else likes = v.likes + " others";
 			}
 		}
 
@@ -430,7 +433,7 @@ addStatusUpdates: function(data,type){
 		var likesA = ""; if (v.likes > 0) likesA = " active";
 		var sharesA = ""; if (vshares > 0) sharesA = " active";
 		var oldcA = ""; if (voldComments != "") oldcA = " active";
-		var cA = ""; if (vcomments != "") cA = " active";
+		var cA = ""; if (v.comments.length > 0) cA = " active";
 		var newcA = ""; if (newComments != "") newcA = " active";
 		var ucA = ""; if (v.likes > 0 || shares != "" || oldComments != "" || comments != "" || newComments != "") ucA = " active";		
 		s += '<li id="update-'+v.sid+'" class="streamItem">';
@@ -452,7 +455,7 @@ addStatusUpdates: function(data,type){
 		s += '<li class="updateLikes'+likesA+'"><span class="link updateLikesLink"><span class="count">'+v.likes+'</span> <span class="updateLikesCount">'+likesCount+'</span></span> by <span class="list">'+likes+'</span></li>';
 		s += '<li class="updateShares'+sharesA+'"><span class="link updateSharesLink"><span class="count">'+vshares+'</span> <span class="updateSharesCount">'+sharesCount+'</span></a> - <span class="list">'+shares+'</span></li>';
 		s += '<li class="updateOlderComments clickable'+oldcA+'"><span class="link updateOlderCommentsLink"><span class="count">'+voldComments+'</span> older <span class="updateOldCommentsCount">'+oldCommentsCount+'</span></span> from <span class="list">'+oldComments+'</span></li>';
-		s += '<li class="updateComments'+cA+'"><ul class="streamComments"><li>'+comments+'</li></ul></li>';
+		s += '<li class="updateComments'+cA+'"><ul class="streamComments">'+comments+'</ul></li>';
 		s += '<li class="updateNewComments clickable'+newcA+'"><span class="link updateNewCommentsLink"><span class="count">'+vnewComments+'</span> more <span class="updateNewCommentsCount">'+newCommentsCount+'</span></span> from <span class="list">'+newComments+'</span></li>';
 		s += '<li class="updateComment'+ucA+'">';
 		s += '<div class="updateCommentBox">';
@@ -481,13 +484,13 @@ addNewComment: function(cid,comment){
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
 	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
-	c += '<div class="commentNameBody">';
-	c += '<a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+comment+'</span>';
-	c += '</div>';
+	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+comment+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
 	c += '<span class="commentTime" title="'+title+'">'+time+'</span></span>&nbsp;&nbsp;';
+	c += '<span class="link editCommentLink">Edit</span>&nbsp;&nbsp;';
+	c += '<span class="link commentLikesLink">+<span class="commentLikesCount">'+likes+'</span></span>&nbsp;&nbsp;';
 	c += '<span class="commentTools"><span class="link commentLikeLink">Like</span></span>';
 	c += '</div>';
 	c += '</div>';
@@ -495,30 +498,42 @@ addNewComment: function(cid,comment){
 	c += '</li>';
 	return c;
 },
-addComments: function(cid,timestamp,comment,image,name){
-	var datetime = new Date(timestamp), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
+addComment: function(cid,owner,timestamp,comment,image,name,likes,ids){
+	var datetime = new Date(parseInt(timestamp + '000')), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
 	if (hours > 12) { hours = hours - 12; prefix = "PM"; }
 	else if (hours == 0) hours = 12;
 	if (minutes < 10) { minutes = '0'+minutes; }
 	if (seconds < 10) { seconds = '0'+seconds; }
 	var monthArray = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+	var monthShortArray = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
 	var dayArray = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 	var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
 	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDate() + ", " + datetime.getFullYear() + " " + timesecs;
 	var time = hours + ":" + minutes + " " + prefix;
 	if (aC.yesterday(datetime)) var time = "Yesterday " + time;
 	else if (!aC.today(datetime)) var time = monthShortArray[datetime.getMonth()] + " " + datetime.getDate() + ", " + datetime.getFullYear();
+	var likestitle = "";
+	if (likes > 0) {
+		if ($.inArray(aC.user.user_id,ids) > -1) {
+			if (likes == 1) likestitle = "You";
+			else likestitle = "You and " + likes-1 + " others";
+		} else {
+			if (likes == 1) likestitle = likes + " other";
+			else likestitle = likes + " others";
+		}
+	}
+	var likesA = ""; if (likes > 0) likesA = " active";
 	var c = '<li id="comment-'+cid+'">';
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
 	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="'+image+'"/></a>';
-	c += '<div class="commentNameBody">';
-	c += '<a href="#" class="commentNameLink">'+name+'</a> - <span class="commentBody">'+comment+'</span>';
-	c += '</div>';
+	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+name+'</a> - <span class="commentBody">'+comment+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
-	c += '<span class="commentTime" title="'+title+'">'+time+'</span></span>&nbsp;&nbsp;';
+	c += '<span class="commentTime" title="'+title+'">'+time+'</span>&nbsp;&nbsp;';
+	if (owner == aC.user.user_id) c += '<span class="link editCommentLink">Edit</span>&nbsp;&nbsp;';
+	c += '<span class="link commentLikesLink'+likesA+'" title="'+likestitle+' liked this">+<span class="commentLikesCount">'+likes+'</span></span>&nbsp;&nbsp;';
 	c += '<span class="commentTools"><span class="link commentLikeLink">Like</span></span>';
 	c += '</div>';
 	c += '</div>';
@@ -531,7 +546,7 @@ bbCode: function(text){
 },
 checkStreamUpdates: function(){
 	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate,hash:aC.getHash()}, function(response) {
-		if (response != "0") {
+		if (!aC.empty(response)) {
 			var newerUpdates = response["data"].length;
 			aC.newerUpdates = newerUpdates;
 			$(".mostRecentCount").find(".mostRecentCountValue").html(newerUpdates).end().show();
@@ -662,7 +677,7 @@ $(".updateStatus .textarea").live('focus',function(){
 $("#share").live('click',function(){
 	if ($.trim($(".updateStatus .textarea").val()).length > 0) {
 		$.post("ajax.php", {p:"status",data:$.trim($(".updateStatus .textarea").val())}, function(response) {
-			if (response != "0") {
+			if (!aC.empty(response)) {
 				response = $.parseJSON(response);
 				if (aC.newerUpdates > 0) $(".updateNewsFeed").click();
 				else aC.newestUpdate = aC.timestamp_sec;
@@ -684,12 +699,15 @@ $(".updateEditLink").live('click',function(){
 $(".saveEditUpdate").live('click',function(){
 	var streamItem = $(this).closest('.streamItem');
 	var sid = streamItem.attr('id').substring(7);
-	streamItem.find('.updateBody').removeAttr('contenteditable').end().find('.editUpdateBody').removeClass("active");
 	var body = streamItem.find('.updateBody').html();
-	$.each(aC.streamUpdates, function(i,v){
-		if (v.sid == sid) aC.streamUpdates[i].data = body;
+	$.post("ajax.php", {p:"updatestatus",sid:sid,data:body}, function(response) {
+		if (!aC.empty(response)) {
+			streamItem.find('.updateBody').removeAttr('contenteditable').end().find('.editUpdateBody').removeClass("active");
+			$.each(aC.streamUpdates, function(i,v){
+				if (v.sid == sid) aC.streamUpdates[i].data = body;
+			});
+		}
 	});
-	// update post in database
 });
 $(".cancelEditUpdate").live('click',function(){
 	var streamItem = $(this).closest('.streamItem');
@@ -703,13 +721,12 @@ $(".updateLikeLink").live('click',function(){
 	var streamItem = $(this).closest('.streamItem');
 	var sid = streamItem.attr('id').substring(7);
 	$.post("ajax.php", {p:"like",oid:sid}, function(response) {
-		if (response != "0") {
-			var updateLikes = streamItem.find(".updateLikes"); alert(updateLikes.html());
+		if (!aC.empty(response)) {
+			var updateLikes = streamItem.find(".updateLikes");
 			if (streamItem.hasClass("active")) {
 				updateLikes.find(".count").html(parseInt(updateLikes.find(".count").html())+1);
 			} else {
-				updateLikes.find(".count").html('1');
-				updateLikes.addClass("active");
+				updateLikes.find(".count").html('1').end().addClass("active");
 			}
 		}
 	});
@@ -730,8 +747,8 @@ $(".comment").live('click',function(){
 	var sid = streamItem.attr('id').substring(7);
 	if (comment.length > 0) {
 		$.post("ajax.php", {p:"comment",data:comment,oid:sid}, function(response) {
-			if (response != "0") {
-				var c = aC.addNewComment(response,comment);
+			if (!aC.empty(response)) {
+				var c = aC.addNewComment(response["data"],comment);
 				streamItem.find(".updateComment .textarea").val('').blur();
 				streamItem.find(".streamComments").append(c);
 				streamItem.find(".updateComments").addClass("active");
@@ -746,7 +763,7 @@ $(".updateNewsFeed").live('click',function(){
 	aC.newerUpdates = 0;
 	$(".loadingMostRecent").css('display','block');
 	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate}, function(response) {
-		if (response != "0") {
+		if (!aC.empty(response)) {
 			var s = aC.addStatusUpdates(response["data"],"new");
 			$("ul#stream").prepend(s).find("li.active").prev().addClass("borderActive");
 			aC.streamUpdates = response["data"].concat(aC.streamUpdates);
@@ -760,7 +777,7 @@ $(".loadMore").live('click',function(){
 	$(this).hide();
 	$(".loadingMore").css('display','block');
 	$.getJSON('ajax.php', {p:"stream",oldest:aC.oldestUpdate}, function(response) {
-		if (response != "0") {
+		if (!aC.empty(response)) {
 			var s = aC.addStatusUpdates(response["data"],"old");
 			$("ul#stream").append(s).find("li.active").next().addClass("borderActive");
 			if (response["data"].length < 30) {
@@ -769,7 +786,6 @@ $(".loadMore").live('click',function(){
 				$(".loadMoreLink").hide();
 			}
 			aC.streamUpdates.concat(response["data"]);
-			alert(aC.streamUpdates.length);
 		} else {
 			if (aC.moreUpdates && aC.newestUpdate > 0) {
 				$("ul#stream").append('<div class="moreUpdates">No More Updates Available!</div>');
