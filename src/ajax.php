@@ -20,7 +20,6 @@ function loggedIn() {
 		$_SESSION['username'] = $row['username'];
 		$_SESSION['access_level'] = $row['access_level'];
 		$_SESSION['last_login'] = $row['last_login'];
-		$_SESSION['last_login_ip'] = $row['last_login_ip'];
 		if (isset($row['middlename']) && !empty($row['middlename'])) $_SESSION['fullname'] = $row['firstname'] . ' ' . $row['middlename'] . ' ' . $row['lastname'];
 		else $_SESSION['fullname'] = $row['firstname'] . ' ' . $row['lastname'];
 		$_SESSION['firstname'] = $row['firstname'];
@@ -100,7 +99,7 @@ try {
 try {
 	$status = strip_tags($_POST['data']);
 	$db = new MySQL();
-	$db->query('UPDATE stream SET data = \''.addslashes($status).'\' WHERE sid = '.$_POST['sid']);
+	$db->query('UPDATE stream SET data = \''.mysql_real_escape_string(addslashes($status)).'\' WHERE sid = '.$_POST['sid']);
 	if ($db->affectedRows() == 1) {
 		$final = array(
 			"error"=>false
@@ -162,7 +161,7 @@ try {
 		);
 		if (!is_array($comments)) $comments = array();
 		array_push($comments,$data);
-		$db->query('UPDATE stream SET comments = \''.json_encode($comments).'\' WHERE sid = '.$_POST['oid']);
+		$db->query('UPDATE stream SET comments = \''.mysql_real_escape_string(json_encode($comments)).'\' WHERE sid = '.$_POST['oid']);
 		if ($db->affectedRows() == 1) {
 			header('Content-Type: text/javascript; charset=utf8');
 			$final = array(
@@ -196,13 +195,41 @@ try {
 	echo $e->getMessage();
 	exit();
 }
+} if ($_GET['p'] == 'search') {
+try {
+	if (!isset($_GET['q']) || empty($_GET['q'])) die('0');
+	$db = new MySQL();
+	$q = trim($_GET['q']);
+	list($firstname, $middlename, $lastname) = split(' ',$q);
+	if (!isset($lastname) && !isset($middlename)) {
+		unset($middlename); unset($lastname);
+		$query = 'i.firstname LIKE "'.$firstname.'%" OR i.middlename LIKE "'.$firstname.'%" OR i.lastname LIKE "'.$firstname.'%" OR u.username LIKE "'.$firstname.'%"';
+	} elseif (!isset($lastname)) {
+		$lastname = $middlename; unset($middlename);
+		$query = 'i.firstname LIKE "'.$firstname.'%" AND i.lastname LIKE "'.$lastname.'%" OR i.firstname LIKE "'.$firstname.'%" AND i.middlename LIKE "'.$lastname.'%"';
+	} else {
+		$query = 'i.firstname LIKE "'.$firstname.'%" AND i.middlename LIKE "'.$middlename.'%" AND i.lastname LIKE "'.$lastname.'%"';
+	}
+	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.default_image,i.hometown,i.current_city,h.followers FROM (login u JOIN info i ON u.user_id = i.user_id) JOIN socialhns h ON u.user_id = h.user_id WHERE '.$query.' ORDER BY i.firstname LIMIT 8');
+	if ($db->numRows() > 0) {
+		header('Content-Type: text/javascript; charset=utf8');
+		$rows = $db->fetchAssocRows();
+		$final = array(
+			"data"=>$rows,
+			"error"=>false
+		);
+		print_r(json_encode($final));
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
 } elseif ($_GET['p'] == 'stream') {
-include 'validip.inc.php';
 $timestamp = time();
 $timeout = $timestamp-600;
 try {
 	$db = new MySQL();
-	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s","%s")',$timestamp,$ip,$_SESSION['user_id'],$_SESSION['username'],'/socialhns/#'.$_GET['hash']));
+	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s")',$timestamp,$_SESSION['user_id'],$_SESSION['username'],'/socialhns/#'.$_GET['hash']));
 	$db->query("DELETE FROM users_online WHERE timestamp < $timeout");
 	$db->query('SELECT followers FROM socialhns WHERE user_id = '.$_SESSION['user_id']);
 	$followers = array();
@@ -229,11 +256,13 @@ try {
 		for ($i=0;$i<count($rows);$i++) {
 			unset($rows[$i]["block"]);
 			$comments = json_decode($rows[$i]["comments"]);
-			foreach($comments as $key=>$comment) {
-				$db->query('SELECT u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM login u JOIN info i ON u.user_id = i.user_id WHERE u.user_id = '.$comment->owner);
-				$comments[$key]->user = $db->fetchAssocRow();
+			if (is_array($comments)) {
+				foreach($comments as $key=>$comment) {
+					$db->query('SELECT u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM login u JOIN info i ON u.user_id = i.user_id WHERE u.user_id = '.$comment->owner);
+					$comments[$key]->user = $db->fetchAssocRow();
+				}
+				if (!empty($comments)) $rows[$i]["comments"] = $comments;
 			}
-			if (!empty($comments)) $rows[$i]["comments"] = $comments;
 		}
 		$final = array(
 			"data"=>$rows,
@@ -263,6 +292,10 @@ try {
 <form class="f_search" action="#" method="post" onsubmit="return false">
 <input id="header_search" type="text" autocomplete="off" name="header_search" placeholder="Find people"/>
 </form>
+<div id="search_results">
+<ul id="search_results_list"></ul>
+<div id="noresults">No Results</div>
+</div>
 </div>
 <div id="nav" class="rfloat">
 <ul id="pageNav">
@@ -474,7 +507,6 @@ try {
 	exit();
 }
 } elseif (isset($_POST['register'])) {
-include 'validip.inc.php';
 function ucname($string) {
 	$string = ucwords(strtolower($string));
 	foreach (array('-', '\'', 'Mc') as $delimiter) {
@@ -494,7 +526,7 @@ $gender = (isset($_POST['gender'])) ? $_POST['gender'] : '';
 $bmonth = (isset($_POST['bmonth'])) ? $_POST['bmonth'] : '';
 $bday = (isset($_POST['bday'])) ? $_POST['bday'] : '';
 $byear = (isset($_POST['byear'])) ? $_POST['byear'] : '';
-if (empty($current_city)) $current_city = $hometown;
+if (empty($hometown)) $hometown = $current_city;
 list($firstname, $middlename, $lastname) = split(' ',$name);
 if (!isset($lastname)) { $lastname = $middlename; $middlename = ''; }
 try {
@@ -504,7 +536,6 @@ try {
 		'access_level'=>1,
 		'last_login'=>date('Y-m-d'),
 		'date_joined'=>date('Y-m-d'),
-		'last_login_ip'=>$ip,
 		'logins'=>1
 	));
 	$user_id = $db->insertID();
@@ -531,7 +562,6 @@ try {
 		$_SESSION['username'] = $username;
 		$_SESSION['access_level'] = 1;
 		$_SESSION['last_login'] = date('Y-m-d');
-		$_SESSION['last_login_ip'] = $ip;
 		if (isset($middlename) && !empty($middlename)) {
 			$_SESSION['fullname'] = $firstname . ' ' . $middlename . ' ' . $lastname;
 			$_SESSION['middlename'] = $middlename;
@@ -546,12 +576,11 @@ try {
 }
 loggedIn();
 } elseif (isset($_POST['offlineUpdate'])) {
-include 'validip.inc.php';
 $timestamp = time();
 $timeout = $timestamp-600;
 try {
 	$db = new MySQL();
-	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s","%s")',$timestamp,$ip,0,'guest','/socialhns/#'.$_POST['hash']));
+	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s")',$timestamp,0,'guest','/socialhns/#'.$_POST['hash']));
 	$db->query("DELETE FROM users_online WHERE timestamp < $timeout");
 } catch(Exception $e) {
 	echo $e->getMessage();
@@ -595,8 +624,8 @@ try {
 <div><label for="reg_password">Password:</label><input type="password" name="reg_password" id="reg_password" value=""/></div>
 <div><label for="reg_name">Full Name:</label><input type="text" name="reg_name" id="reg_name" value=""/></div>
 <div><label for="reg_email">Email:</label><input type="email" name="reg_email" id="reg_email" value=""/></div>
+<div><label for="reg_city">Current City:</label><input type="text" name="reg_city" id="reg_city" value=""/></div>
 <div><label for="reg_hometown">Hometown:</label><input type="text" name="reg_hometown" id="reg_hometown" value=""/></div>
-<div><label for="reg_city">Community:</label><input type="text" name="reg_city" id="reg_city" value="" placeholder="Current Location, School, Business, or Group"/></div>
 <div>
 <label for="reg_gender">Gender:</label>
 <select name="reg_gender" id="reg_gender">
@@ -635,9 +664,9 @@ try {
 </div>
 <script>
 (function(){
-var bday = "", byear = "";
-for (i = 1; i <= 31; i++) { bday += "<option value=\""+i+"\">"+i+"</option>"; }
-for (i = 2011; i >= 1902; i--) { byear += "<option value=\""+i+"\">"+i+"</option>"; }
+var bday="",byear="";
+for (i=1;i<=31;i++){bday+="<option value=\""+i+"\">"+i+"</option>";}
+for (i=2011;i>=1902;i--){byear+="<option value=\""+i+"\">"+i+"</option>";}
 $("#reg_bday").append(bday);
 $("#reg_byear").append(byear);
 })();

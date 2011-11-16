@@ -28,6 +28,7 @@ newerUpdates: 0,
 moreUpdates: true,
 currentTime: 0,
 streamInterval: false,
+headerSearch: "",
 timestamp: Date.now || function(){
 	return +new Date;
 },
@@ -243,8 +244,8 @@ regValidate: function(){
 	password = $("#reg_password"),
 	name = $("#reg_name"),
 	email = $("#reg_email"),
-	hometown = $("#reg_hometown"),
 	city = $("#reg_city"),
+	hometown = $("#reg_hometown"),
 	bmonth = $("#reg_bmonth"),
 	bday = $("#reg_bday"),
 	byear = $("#reg_byear"),
@@ -264,13 +265,12 @@ regValidate: function(){
 	if ($.trim(email.val()) == "") { email.addClass('error'); e = true; }
 	else if (!emailReg.test($.trim(email.val()))) { email.addClass('error'); e = true; } else email.removeClass('error');
 
-	if ($.trim(hometown.val()) == "") { hometown.addClass('error'); e = true; } else hometown.removeClass('error');
+	if ($.trim(city.val()) == "") { city.addClass('error'); e = true; } else city.removeClass('error');
 	if (bmonth.val() == 0) { bmonth.addClass('error'); e = true; } else bmonth.removeClass('error');
 	if (bday.val() == 0) { bday.addClass('error'); e = true; } else bday.removeClass('error');
 	if (byear.val() == 0) { byear.addClass('error'); e = true; } else byear.removeClass('error');
 	
-	if (e) return false;
-	else return true;
+	return !e;
 },
 checkUsername: function(uname){
 	if (uname != "") {
@@ -294,6 +294,25 @@ handleError: function(error){
 },
 handleHash: function(){
 	var hash = aC.getHash();
+},
+handleSearch: function(results){
+	var s = "";
+	$.each(results, function(i,v){
+		if (v.default_image != "") var image = "/uploads/"+v.username+"/images/thumb/"+v.default_image;
+		else var image = "i/mem/default.jpg";
+		if (v.middlename != "") var fullname = v.firstname + " " + v.middlename + " " + v.lastname;
+		else var fullname = v.firstname + " " + v.lastname;
+		if (v.current_city != "") var city = v.current_city;
+		else var city = v.hometown;
+		s += '<li id="sresult-'+v.id+'" class="searchResult">';
+		s += '<div class="left"><img class="sresultImage" src="'+image+'"></div>';
+		s += '<div class="right">';
+		s += '<div class="sresultName">'+fullname+'</div>';
+		s += '<div class="sresultCity">'+city+'</div>';
+		s += '</div>';
+		s += '</li>';
+	});
+	return s;
 },
 addNewStatusUpdate: function(sid,status){
 	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
@@ -484,7 +503,7 @@ addNewComment: function(cid,comment){
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
 	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
-	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+comment+'</span></div>';
+	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
@@ -527,7 +546,7 @@ addComment: function(cid,owner,timestamp,comment,image,name,likes,ids){
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
 	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="'+image+'"/></a>';
-	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+name+'</a> - <span class="commentBody">'+comment+'</span></div>';
+	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+name+'</a> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
@@ -665,6 +684,42 @@ $("#photosLink").live('click',function(){
 		aC.loadModule('photos');
 	}
 });
+$("#header_search").live('keyup',function(){
+	var val = $.trim($(this).val()).toLowerCase();
+	if (aC.headerSearch != val) aC.headerSearch = val;
+	else return;
+	if (val.length == 0) {
+		$("#search_results").hide().find("ul").empty();
+		return;
+	}
+	if (val == "do a barrel roll" || val == "z or r twice") {
+		$("body").addClass("roll");
+		setTimeout('$("body").removeClass("roll")',5000);
+	} else if (val == "cornify") {
+		if (typeof cornify_add === "undefined") {
+			$.getScript("http://www.cornify.com/js/cornify.js", function(){
+				for (var i=0;i<25;i++) cornify_add();
+			});
+		}
+	}
+	$.getJSON("ajax.php", {p:"search",q:val}, function(response) {
+		if (!aC.empty(response)) {
+			$("#search_results").find("#noresults").hide().end().show();
+			var result = aC.handleSearch(response["data"]);
+			$("#search_results ul").html(result);
+		} else {
+			$("#search_results").find("ul").empty().end().find("#noresults").show().end().show();
+		}
+	});
+}).live('focus',function(){
+	var val = $.trim($(this).val());
+	if (val.length > 0) $("#search_results").show();
+}).live('blur',function(){
+	$("#search_results").hide();
+});
+$("#search_results li").live('click',function(){
+	
+});
 $(".updateStatus .textarea").live('focus',function(){
 	$(this).css('max-height',400);
 	$(".updateStatus .buttonTools").show();
@@ -714,7 +769,7 @@ $(".cancelEditUpdate").live('click',function(){
 	var sid = streamItem.attr('id').substring(7);
 	streamItem.find('.updateBody').removeAttr('contenteditable').end().find('.editUpdateBody').removeClass("active");
 	$.each(aC.streamUpdates, function(i,v){
-		if (v.sid == sid) streamItem.find('.updateBody').html(v.data);
+		if (v.sid == sid) streamItem.find('.updateBody').html(aC.stripSlashes(v.data));
 	});
 });
 $(".updateLikeLink").live('click',function(){
