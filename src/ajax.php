@@ -593,8 +593,10 @@ try {
 		'birth_year'=>$byear
 	));
 	$db->insert('socialhns', array('user_id'=>$user_id));
-	$db->insert('hns_desktop', array('user_id'=>$user_id));
-	$db->insert('homenetspaces', array('user_id'=>$user_id));
+	if (LOCAL) {
+		$db->insert('hns_desktop', array('user_id'=>$user_id));
+		$db->insert('homenetspaces', array('user_id'=>$user_id));
+	}
 	if ($db->affectedRows() == 1) {
 		$_SESSION['logged'] = true;
 		$_SESSION['user_id'] = $user_id;
