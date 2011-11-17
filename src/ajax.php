@@ -1,5 +1,7 @@
 <?php
 session_start();
+define('LOCAL',true);
+define('ROOT',dirname(__FILE__));
 
 if (isset($_GET['p']) && $_GET['p'] == 'logged') {
 	if (isset($_SESSION['logged'])) die('true'); else die('0');
@@ -177,6 +179,38 @@ try {
 }
 } elseif ($_POST['p'] == 'share') {
 
+} elseif ($_POST['p'] == 'imageupload') {
+$img = imagecreatefromstring(base64_decode($_POST['imagedata']));
+if ($img) {
+	$uploaddir = ((LOCAL)?dirname(ROOT):ROOT)."/uploads/".$_SESSION['username']."/images/";
+	$thumbuploaddir = $uploaddir."thumb/";
+	if (!is_dir($uploaddir)) mkdir($uploaddir,0777,true) or die("Upload directory could not be created.");
+	if (!is_dir($thumbuploaddir)) mkdir($thumbuploaddir,0777,true) or die("Thumb directory could not be created.");
+	$random = time().mt_rand().".jpg";
+	$name = $uploaddir.$random;
+	imagejpeg($img,$name);
+	list($width,$height) = getimagesize($name);
+	$thumb_width = 200;
+	$ratio = $width / $thumb_width;
+	$thumb_height = round($height / $ratio);
+	$thumb = imagecreatetruecolor($thumb_width,$thumb_height);
+	imagecopyresampled($thumb,$img,0,0,0,0,$thumb_width,$thumb_height,$width,$height);
+	$name = $thumbuploaddir.$random;
+	imagejpeg($thumb,$name);
+	imagedestroy($thumb);
+	imagedestroy($img);
+	if (!isset($_SESSION['default_image']) || $_POST['setdefault'] == "true") {
+		$_SESSION['default_image'] = $random;
+		try {
+			$db = new MySQL();
+			$db->query('UPDATE info SET default_image = "' . mysql_real_escape_string($random) . '" WHERE user_id = ' . $_SESSION['user_id'] . ' LIMIT 1');
+		} catch(Exception $e) {
+			echo $e->getMessage();
+			exit();
+		}
+		echo $random;
+	}
+}
 }
 }
 } elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
@@ -415,6 +449,11 @@ Friends
 ?>
 <div id="edit">
 Edit Profile
+<div class="buttonTools">
+<ul class="toolList lfloat">
+<li class="listItem"><label class="uploadImageButton" for="b_uploadImage"><input value="Upload Images" type="submit" id="b_uploadImage"/></label></li>
+</ul>
+</div>
 </div>
 <?php
 } elseif ($_GET['p'] == 'profile') {

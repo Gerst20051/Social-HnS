@@ -1,13 +1,7 @@
-function main() {
-
 Array.prototype.clear=function(){this.splice(0,this.length)};
+Array.prototype.diff=function(a){return this.filter(function(i){return!(a.indexOf(i)>-1)})};
 
-window.log = function() {
-	log.history = log.history || [];
-	log.history.push(arguments);
-	if (this.console) console.log(Array.prototype.slice.call(arguments));
-};
-
+function main() {
 var aC = {
 title: "Social HnS",
 logged: false,
@@ -19,6 +13,7 @@ loadedLeft: [],
 loadedContent: [],
 loadedProfile: [],
 loadedRight: [],
+preloadedContent: ['uploadImage'],
 user: {},
 profileUser: {},
 streamUpdates: {},
@@ -90,7 +85,15 @@ setHash: function(hash){
 getHash: function(){
 	return decodeURIComponent(window.location.hash.substring(1));
 },
+doCallback: function(args){
+	if (args.length > 1) {
+		if ($.isFunction(args[args.length-1])) {
+			args[args.length-1]();
+		}
+	}
+},
 init: function(){
+	aC.loadedContent=aC.loadedContent.concat(aC.preloadedContent);
 	$.get('ajax.php', {p:"logged"}, function(response) {
 		if (aC.stringToBoolean(response)) aC.logged = true;
 		if (!aC.logged) {
@@ -105,18 +108,24 @@ init: function(){
 loadModule: function(module){
 	if (!arguments[1] || $.isFunction(arguments[1])) var target = "content";
 	else var target = arguments[1];
+	var args = arguments;
 	if (module == "login" && aC.logged) {
+		$("#left,#right,#header").empty();
+		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){
+			$("#"+v).remove();
+		});
 		aC.loadedLeft.clear();
 		aC.loadedContent.clear();
 		aC.loadedProfile.clear();
 		aC.loadedRight.clear();
-		$("#left,#content,#right,#header").empty();
+		aC.loadedContent=aC.loadedContent.concat(aC.preloadedContent);
 	}
 	switch (target) {
 		case "left":
 			if ($.inArray(module,aC.loadedLeft) > -1) {
 				$("#left").show().children().hide();
 				$("#"+module).show();
+				aC.doCallback(args);
 				return;
 			}
 		break;
@@ -128,11 +137,13 @@ loadModule: function(module){
 				if ($.inArray(aC.currentPage,profilePages) == -1) {
 					if ($("#right").is(":hidden")) aC.toggleModule('right');
 				}
+				aC.doCallback(args);
 				return;
 			}
 		break;
 		case "profile":
 			if ($.inArray(module,aC.loadedProfile) > -1) {
+				aC.doCallback(args);
 				return;
 			}
 		break;
@@ -140,6 +151,7 @@ loadModule: function(module){
 			if ($.inArray(module,aC.loadedRight) > -1) {
 				$("#right").show().children().hide();
 				$("#"+module).show();
+				aC.doCallback(args);
 				return;
 			}
 		break;
@@ -155,13 +167,7 @@ loadModule: function(module){
 			$(".loadingMostRecent,.loadingMore").hide();
 			$(".loadMore").css('display','block');
 		}
-		/*
-		if (arguments.length > 1) {
-			if ($.isFunction(arguments[arguments.length - 1])) {
-				arguments[arguments.length - 1];
-			}
-		}
-		*/
+		aC.doCallback(args);
 	});
 },
 toggleModule: function(module,callback) {
@@ -190,7 +196,9 @@ loggedIn: function(){
 			if (aC.user.middlename != "") aC.user.fullname = aC.user.firstname+' '+aC.user.middlename+' '+aC.user.lastname;
 			else aC.user.fullname = aC.user.firstname+' '+aC.user.lastname;
 		});
-		$("#content").empty();
+		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){
+			$("#"+v).remove();
+		});
 		aC.setPage('newsfeed');
 		aC.loadModule('home_newsfeed');
 		aC.loadModule('home_leftcol','left');
@@ -224,10 +232,6 @@ logout: function(){
 		aC.setPage('login'); aC.setTitle(); aC.setHash(); aC.loadModule('login'); aC.logged = false;
 		$("#body").animate({left:0}, 400, function(){ $("#doc").addClass("out").removeClass("in"); });
 		aC.profileID = 0;
-		aC.loadedLeft.clear();
-		aC.loadedContent.clear();
-		aC.loadedProfile.clear();
-		aC.loadedRight.clear();
 		aC.user = {};
 		aC.profileUser = {};
 		aC.streamUpdates = {};
@@ -235,6 +239,7 @@ logout: function(){
 		aC.oldestUpdate = 0;
 		aC.newerUpdates = 0;
 		aC.moreUpdates = true;
+		aC.handlePreloadedContent();
 		clearInterval(aC.streamInterval);
 	});
 },
@@ -290,7 +295,7 @@ onKeyDown: function(e){
 	}
 },
 handleError: function(error){
-	return error;
+	alert(error.text); log(error);
 },
 handleHash: function(){
 	var hash = aC.getHash();
@@ -313,6 +318,9 @@ handleSearch: function(results){
 		s += '</li>';
 	});
 	return s;
+},
+handlePreloadedContent: function(){
+	$("#uploadImage").find("#uploadImageHolder").css('background-image','');
 },
 addNewStatusUpdate: function(sid,status){
 	var datetime = new Date(), hours = datetime.getHours(), prefix = "AM", minutes = datetime.getMinutes(), seconds = datetime.getSeconds();
@@ -572,6 +580,30 @@ checkStreamUpdates: function(){
 			$("ul.sideNav #newsFeedLink .sideNavCount").find(".countValue").html(newerUpdates).end().show();
 		}
 	});
+},
+uploadImageHolder: function(){
+	var holder = document.getElementById('uploadImageHolder'), setdefault = false;
+	holder.ondragover = function () { this.className = 'hover'; return false; };
+	holder.ondragend = function () { this.className = ''; return false; };
+	holder.ondrop = function (e) {
+		this.className = '';
+		e.preventDefault();
+		$.each(e.dataTransfer.files,function(i,file){
+			var reader = new FileReader();
+			reader.onload = function (event) {
+				holder.style.background = 'url(' + event.target.result + ') no-repeat center';
+				if ($("#uploadImage input#cb_defaultImage").is(':checked')) setdefault = true;
+				$.post("ajax.php", {p:"imageupload",setdefault:setdefault,imagedata:event.target.result.split(",")[1]}, function(response){
+					if (response.length > 0) {
+						aC.user.default_image = response;
+						$(".welcome_image img").attr('src','/uploads/'+aC.user.username+'/images/thumb/'+response);
+					}
+				});
+			};
+			reader.readAsDataURL(file);
+		});
+		return false;
+	};
 }
 };
 
@@ -852,21 +884,39 @@ $(".loadMore").live('click',function(){
 		$(".loadMore").show();
 	});
 });
+$("#b_uploadImage").live('click',function(){
+	if (aC.currentPage != "uploadImage") {
+		aC.setPage('uploadImage');
+		aC.loadModule('uploadImage',aC.uploadImageHolder);
+	}
+});
 });
 
 function encode(a){if(a===null||typeof a==="undefined"){return""}var b=(a+'');var c="",start,end,stringl=0;start=end=0;stringl=b.length;for(var n=0;n<stringl;n++){var d=b.charCodeAt(n);var e=null;if(d<128){end++}else if(d>127&&d<2048){e=String.fromCharCode((d>>6)|192)+String.fromCharCode((d&63)|128)}else{e=String.fromCharCode((d>>12)|224)+String.fromCharCode(((d>>6)&63)|128)+String.fromCharCode((d&63)|128)}if(e!==null){if(end>start){c+=b.slice(start,end)}c+=e;start=end=n+1}}if(end>start){c+=b.slice(start,stringl)}return c}
 function secure(a){var b="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";var c,o2,o3,h1,h2,h3,h4,bits,i=0,ac=0,enc="",tmp_arr=[];if(!a){return a}a=encode(a+'');do{c=a.charCodeAt(i++);o2=a.charCodeAt(i++);o3=a.charCodeAt(i++);bits=c<<16|o2<<8|o3;h1=bits>>18&0x3f;h2=bits>>12&0x3f;h3=bits>>6&0x3f;h4=bits&0x3f;tmp_arr[ac++]=b.charAt(h1)+b.charAt(h2)+b.charAt(h3)+b.charAt(h4)}while(i<a.length);enc=tmp_arr.join('');switch(a.length%3){case 1:enc=enc.slice(0,-2)+'==';break;case 2:enc=enc.slice(0,-1)+'=';break}return enc}
 
+window.log=function(){
+	log.history=log.history||[];
+	log.history.push(arguments);
+	if(this.console)console.log(Array.prototype.slice.call(arguments));
+};
+
+$(document).ajaxError(function(e,xhr,settings,exception){
+	aC.handleError({
+		"text":"Ajax Error\nin: "+settings.url+" \nerror: "+exception,
+		"type":"Ajax Error",
+		"in":settings.url,
+		"error":exception,
+		"arguments":arguments
+	});
+});
+
 return true;
 }
 
-window.$ && main() || (function() {
-	var jquery = document.createElement("script");
-	jquery.setAttribute("type","text/javascript");
-	jquery.setAttribute("src","jquery.js");
-	jquery.onload = main;
-	jquery.onreadystatechange = function() {
-		if (this.readyState == "complete" || this.readyState == "loaded") main();
-	};
-	(document.getElementsByTagName("head")[0] || document.documentElement).appendChild(jquery);
+window.$&&main()||(function(){
+	var jq=document.createElement("script");
+	jq.setAttribute("type","text/javascript");jq.setAttribute("src","jquery.js");jq.onload=main;
+	jq.onreadystatechange=function(){if(this.readyState=="complete"||this.readyState=="loaded")main()};
+	(document.getElementsByTagName("head")[0]||document.documentElement).appendChild(jq);
 })();

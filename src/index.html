@@ -2,7 +2,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 <title>Social HnS</title>
 <meta name="description" content="Connect Through Your Interests!">
-<link rel="shortcut icon" href="favicon.ico">
+<link href="favicon.ico" rel="icon" type="image/x-icon">
 <script>
 (function(){
 var css=["style.css"],sc="link",rel="stylesheet",ce="createElement",sa="setAttribute",d=document,tn="getElementsByTagName",ua=window.navigator.userAgent,agent=false;
@@ -15,10 +15,17 @@ for(var i=0,l=js.length;i<l;++i){if(agent){var t=d[ce](sc);t[sa]("src",js[i]);d[
 </head>
 <body>
 <div id="doc" class="out">
-<header><div class="left"><h1><span id="logoHomeLink" class="homeLink">Social HnS</span></h1></div><div id="header" class="right"></div></header>
+<div id="docHeader"><header><div class="left"><h1><span id="logoHomeLink" class="homeLink">Social HnS</span></h1></div><div id="header" class="right"></div></header></div>
 <article id="left"></article>
 <section id="body">
-<article id="content"></article>
+<article id="content">
+<div id="uploadImage" class="preloaded">
+<div>Upload Images</div>
+<div id="uploadImageHolder"></div>
+<div>Drag Images To Upload</div>
+<input class="checkbox" id="cb_defaultImage" type="checkbox"><label for="cb_defaultImage">Set As Default</label>
+</div>
+</article>
 <article id="right"></article>
 <footer>Social HnS</footer>
 </section>

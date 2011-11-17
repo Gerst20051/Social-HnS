@@ -206,7 +206,12 @@ position:relative;
 width:980px;
 }
 
-#doc > header {
+#docHeader {
+position:fixed;
+width:980px;
+}
+
+#docHeader > header {
 background:#666;
 display:table;
 height:60px;
@@ -218,7 +223,7 @@ width:100%;
 z-index:1;
 }
 
-#doc > header h1 {
+#docHeader > header h1 {
 font-family:arial,sans-serif;
 font-size:20pt;
 left:18px;
@@ -233,25 +238,25 @@ user-select:none;
 -webkit-user-select:none;
 }
 
-#doc > header h1 span {
+#docHeader > header h1 span {
 color:rgb(114,115,113);
 cursor:pointer;
 -webkit-mask-image:-webkit-gradient(linear,left top,left bottom,from(rgba(0,0,0,1)),to(rgba(0,0,0,0)));
 position:absolute;
 }
 
-#doc > header h1:after{
+#docHeader > header h1:after{
 content:"Social HnS";
 color:rgb(63,63,63);
 }
 
-#doc > header > .left {
+#docHeader > header > .left {
 display:table-cell;
 padding-right:20px;
 width:178px;
 }
 
-#doc > header > .right {
+#docHeader > header > .right {
 display:table-cell;
 width:770px;
 }
@@ -273,7 +278,7 @@ width:362px;
 
 #header_search:hover,#header_search:focus {
 border:1px solid #4d90fe;
-box-shadow:inset inset 0 1px 2px rgba(0,0,0,0.3);
+box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
 -khtml-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
 -moz-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
 -webkit-box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
@@ -400,6 +405,10 @@ color:#333;
 font-size:10pt;
 height:26px;
 margin-top:10px;
+}
+
+.preloaded {
+display:none;
 }
 
 #login,#register {
@@ -903,4 +912,15 @@ text-align:center;
 .profile_image img {
 min-height:100px;
 width:200px;
+}
+
+#uploadImageHolder {
+border:10px dashed #ccc;
+height:300px;
+margin:20px auto;
+width:300px;
+}
+
+#uploadImageHolder.hover {
+border:10px dashed #333;
 }
