@@ -16,6 +16,7 @@ loadedRight: [],
 preloadedContent: ['uploadImage'],
 user: {},
 profileUser: {},
+urlParams: {},
 streamUpdates: {},
 newestUpdate: 0,
 oldestUpdate: 0,
@@ -78,12 +79,23 @@ setTitle: function(title,type){
 		document.title = title;
 	}
 },
-setHash: function(hash){
-	if (!hash) window.location.replace("#");
-	else window.location.replace("#" + encodeURI(hash));
+setHash: function(type){
+	if (type) {
+		aC.urlParams = {};
+		window.location.replace("#");
+	} else window.location.replace("#"+$.param(aC.urlParams));
 },
 getHash: function(){
-	return decodeURIComponent(window.location.hash.substring(1));
+	var params = {};
+	(decodeURIComponent(window.location.hash)).replace(/[#&]+([^=&]+)=([^&]*)/gi, function(str,key,value) {
+		params[key] = value;
+	});
+	aC.urlParams = params;
+	return params;
+},
+setParam: function(key,value){
+	if (value) aC.urlParams[key] = value;
+	else delete aC.urlParams[key];
 },
 doCallback: function(args){
 	if (args.length > 1) {
@@ -94,14 +106,14 @@ doCallback: function(args){
 },
 init: function(){
 	aC.loadedContent=aC.loadedContent.concat(aC.preloadedContent);
-	$.get('ajax.php', {p:"logged"}, function(response) {
+	$.get('ajax.php', {p:"logged"}, function(response) { aC.getHash(); aC.setHash();
 		if (aC.stringToBoolean(response)) aC.logged = true;
 		if (!aC.logged) {
-			if (aC.getHash() == "register") {
+			if (aC.urlParams.p == "register") {
 				aC.loadModule('register');
 				aC.setTitle('Register');
 			} else aC.loadModule('login');
-			$.post('ajax.php',{offlineUpdate:true,hash:aC.getHash()});
+			$.post('ajax.php',{offlineUpdate:true,hash:$.param(aC.urlParams)});
 		} else aC.loggedIn();
 	});
 },
@@ -111,9 +123,7 @@ loadModule: function(module){
 	var args = arguments;
 	if (module == "login" && aC.logged) {
 		$("#left,#right,#header").empty();
-		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){
-			$("#"+v).remove();
-		});
+		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){$("#"+v).remove()});
 		aC.loadedLeft.clear();
 		aC.loadedContent.clear();
 		aC.loadedProfile.clear();
@@ -196,15 +206,13 @@ loggedIn: function(){
 			if (aC.user.middlename != "") aC.user.fullname = aC.user.firstname+' '+aC.user.middlename+' '+aC.user.lastname;
 			else aC.user.fullname = aC.user.firstname+' '+aC.user.lastname;
 		});
-		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){
-			$("#"+v).remove();
-		});
+		$.each(aC.loadedContent.diff(aC.preloadedContent),function(i,v){$("#"+v).remove()});
 		aC.setPage('newsfeed');
 		aC.loadModule('home_newsfeed');
 		aC.loadModule('home_leftcol','left');
 		aC.loadModule('home_rightcol','right');
 		aC.loadModule('header','header');
-		if (!aC.empty(aC.getHash())) aC.handleHash();
+		if (!aC.empty(aC.urlParams)) aC.handleHash();
 		$("#left").animate({width:200}, 600);
 		$("#right").animate({width:210}, 600);
 		$("#body").animate({left:200}, 600, function(){ $("#doc").addClass("in").removeClass("out"); $('.updateNewsFeed').click(); });
@@ -229,7 +237,7 @@ login: function(){
 logout: function(){
 	$.post('ajax.php', {logout:true}, function() {
 		$("#left,#right").animate({width:0}, 400, function(){ $("#left,#right").empty(); });
-		aC.setPage('login'); aC.setTitle(); aC.setHash(); aC.loadModule('login'); aC.logged = false;
+		aC.setPage('login'); aC.setTitle(); aC.setHash(true); aC.loadModule('login'); aC.logged = false;
 		$("#body").animate({left:0}, 400, function(){ $("#doc").addClass("out").removeClass("in"); });
 		aC.profileID = 0;
 		aC.user = {};
@@ -298,7 +306,11 @@ handleError: function(error){
 	alert(error.text); log(error);
 },
 handleHash: function(){
-	var hash = aC.getHash();
+	switch (aC.urlParams.p) {
+		case "imageupload":
+			alert("imageupload");
+		break;
+	}
 },
 handleSearch: function(results){
 	var s = "";
@@ -309,7 +321,7 @@ handleSearch: function(results){
 		else var fullname = v.firstname + " " + v.lastname;
 		if (v.current_city != "") var city = v.current_city;
 		else var city = v.hometown;
-		s += '<li id="sresult-'+v.id+'" class="searchResult">';
+		s += '<li id="sresult-'+v.user_id+'" class="searchResult">';
 		s += '<div class="left"><img class="sresultImage" src="'+image+'"></div>';
 		s += '<div class="right">';
 		s += '<div class="sresultName">'+fullname+'</div>';
@@ -337,9 +349,9 @@ addNewStatusUpdate: function(sid,status){
 	s += '<div class="updateWrapper"><div class="updateTitle">';
 	if (aC.user.default_image != "") var image = "/uploads/"+aC.user.username+"/images/thumb/"+aC.user.default_image;
 	else var image = "i/mem/default.jpg";
-	s += '<a href="#" class="updateImageLink"><img class="updateImg" src="'+image+'"/></a>';
-	s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+aC.user.fullname+'</a>';
-	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
+	s += '<div class="updateImageLink"><img class="updateImg" src="'+image+'"/></div>';
+	s += '<div class="updateNameDate"><span class="updateNameLink link">'+aC.user.fullname+'</span>';
+	s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<span class="updateDateLink" title="'+title+'">'+time+'</span></span>';
 	s += '<span class="updateEdit">&nbsp;&nbsp;<span class="link updateEditLink">Edit</span></span>';
 	s += '</div></div>';
 	s += '<div class="updateBody">'+aC.stripSlashes(status)+'</div>';
@@ -465,9 +477,9 @@ addStatusUpdates: function(data,type){
 		var ucA = ""; if (v.likes > 0 || shares != "" || oldComments != "" || comments != "" || newComments != "") ucA = " active";		
 		s += '<li id="update-'+v.sid+'" class="streamItem">';
 		s += '<div class="updateWrapper"><div class="updateTitle">';
-		s += '<a href="#" class="updateImageLink"><img class="updateImg" src="'+image+'"/></a>';
-		s += '<div class="updateNameDate"><a href="#" class="updateNameLink">'+fullname+'</a>';
-		s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<a href="#" class="updateDateLink" target="_blank" title="'+title+'">'+time+'</a></span>';
+		s += '<div class="updateImageLink"><img class="updateImg" src="'+image+'"/></div>';
+		s += '<div class="updateNameDate"><span class="updateNameLink link">'+fullname+'</span>';
+		s += '<span class="updateDate">&nbsp;&nbsp;-&nbsp;&nbsp;<span class="updateDateLink" title="'+title+'">'+time+'</span></span>';
 		if (v.owner == aC.user.user_id) s += '<span class="updateEdit">&nbsp;&nbsp;<span class="link updateEditLink">Edit</span></span>';
 		s += '</div></div>';
 		s += '<div class="updateBody">'+aC.stripSlashes(v.data)+'</div>';
@@ -480,7 +492,7 @@ addStatusUpdates: function(data,type){
 		s += '<ul class="streamActions">';
 		s += '<li class="updateLinks"><span class="link updateLikeLink">Like</span>&nbsp;&nbsp;-&nbsp;&nbsp;<span class="link updateCommentLink">Comment</span>&nbsp;&nbsp;-&nbsp;&nbsp;<span class="link updateShareLink">Share</span></li>';
 		s += '<li class="updateLikes'+likesA+'"><span class="link updateLikesLink"><span class="count">'+v.likes+'</span> <span class="updateLikesCount">'+likesCount+'</span></span> by <span class="list">'+likes+'</span></li>';
-		s += '<li class="updateShares'+sharesA+'"><span class="link updateSharesLink"><span class="count">'+vshares+'</span> <span class="updateSharesCount">'+sharesCount+'</span></a> - <span class="list">'+shares+'</span></li>';
+		s += '<li class="updateShares'+sharesA+'"><span class="link updateSharesLink"><span class="count">'+vshares+'</span> <span class="updateSharesCount">'+sharesCount+'</span></span> - <span class="list">'+shares+'</span></li>';
 		s += '<li class="updateOlderComments clickable'+oldcA+'"><span class="link updateOlderCommentsLink"><span class="count">'+voldComments+'</span> older <span class="updateOldCommentsCount">'+oldCommentsCount+'</span></span> from <span class="list">'+oldComments+'</span></li>';
 		s += '<li class="updateComments'+cA+'"><ul class="streamComments">'+comments+'</ul></li>';
 		s += '<li class="updateNewComments clickable'+newcA+'"><span class="link updateNewCommentsLink"><span class="count">'+vnewComments+'</span> more <span class="updateNewCommentsCount">'+newCommentsCount+'</span></span> from <span class="list">'+newComments+'</span></li>';
@@ -510,8 +522,8 @@ addNewComment: function(cid,comment){
 	var c = '<li id="comment-'+cid+'">';
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
-	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></a>';
-	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+aC.user.fullname+'</a> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
+	c += '<divclass="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></div>';
+	c += '<div class="commentNameBody"><div class="link commentNameLink">'+aC.user.fullname+'</div> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
@@ -553,8 +565,8 @@ addComment: function(cid,owner,timestamp,comment,image,name,likes,ids){
 	var c = '<li id="comment-'+cid+'">';
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
-	c += '<a href="#" class="commentImageLink"><img class="commentImg" src="'+image+'"/></a>';
-	c += '<div class="commentNameBody"><a href="#" class="commentNameLink">'+name+'</a> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
+	c += '<div class="commentImageLink"><img class="commentImg" src="'+image+'"/></div>';
+	c += '<div class="commentNameBody"><div class="link commentNameLink">'+name+'</div> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';
 	c += '<div class="commentTimeTools">';
@@ -572,7 +584,7 @@ bbCode: function(text){
 	return true;
 },
 checkStreamUpdates: function(){
-	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate,hash:aC.getHash()}, function(response) {
+	$.getJSON('ajax.php', {p:"stream",newest:aC.newestUpdate,hash:$.param(aC.urlParams)}, function(response) {
 		if (!aC.empty(response)) {
 			var newerUpdates = response["data"].length;
 			aC.newerUpdates = newerUpdates;
@@ -612,14 +624,13 @@ $(document).ready(function(){ aC.init();
 $(".homeLink").live('click',function(){
 	if (aC.logged) {
 		if (aC.currentPage != "newsfeed") {
-			aC.setPage('newsfeed'); aC.setTitle(); aC.setHash();
+			aC.setPage('newsfeed'); aC.setTitle(); aC.setParam('p'); aC.setHash(true);
 			aC.loadModule('home_newsfeed');
-			aC.loadModule('home_leftcol','left');
+			aC.loadModule('home_leftcol','left',function(){$("#newsfeedLink").click()});
 			aC.loadModule('home_rightcol','right');
-			$("#newsFeedLink").click();
 		}
 	} else {
-		aC.setPage('login'); aC.setTitle(); aC.setHash();
+		aC.setPage('login'); aC.setTitle(); aC.setParam('p'); aC.setHash(true);
 		aC.loadModule('login');
 	}
 });
@@ -632,7 +643,7 @@ $("#b_login_splash").live('click',function(){
 	aC.login();
 });
 $("#b_register_splash").live('click',function(){
-	aC.loadModule('register'); aC.setTitle('Register'); aC.setHash('register');
+	aC.loadModule('register'); aC.setTitle('Register'); aC.setParam('p','register'); aC.setHash();
 });
 $("#reg_username, #reg_password, #reg_name, #reg_email, #reg_hometown, #reg_city").live('focus',function(){
 	aC.registerFocus = true;
@@ -650,24 +661,23 @@ $("#b_register").live('click',function(){
 	});
 });
 $("#b_login").live('click',function(){
-	aC.setPage('login'); aC.setTitle(); aC.setHash();
+	aC.setPage('login'); aC.setTitle(); aC.setParam('p'); aC.setHash(true);
 	aC.loadModule('login');
 });
-$("#headerLogoutLink").live('click',function(){
+$(".logoutLink").live('click',function(){
 	aC.logout();
 });
 $(".welcome_image, .welcome_name, .profileLink").live('click',function(){
 	if (aC.currentPage != "profile") {
-		aC.setPage('profile'); aC.setTitle(aC.user.fullname,true); aC.setHash('profile');
-		aC.toggleModule('right');
+		aC.setPage('profile'); aC.setTitle(aC.user.fullname,true); aC.setParam('p','profile'); aC.setHash();
+		if ($("#right").is(":visible")) aC.toggleModule('right');
 		aC.loadModule('profile');
-		aC.loadModule('profile_leftcol','left');
-		$("#wallLink").click();
+		aC.loadModule('profile_leftcol','left',function(){$("#wallLink").click()});
 	}
 });
 $(".welcome_editlink").live('click',function(){
 	if (aC.currentPage != "edit") {
-		aC.setPage('edit');
+		aC.setPage('edit'); aC.setParam('p','edit'); aC.setHash();
 		aC.loadModule('edit');
 	}
 });
@@ -677,42 +687,41 @@ $(".sideNavItem").live('click',function(){
 		$(this).addClass("selectedItem");
 	}
 });
-$("#newsFeedLink").live('click',function(){
+$("#newsfeedLink").live('click',function(){
 	if (aC.currentPage != "newsfeed") {
-		aC.setPage('newsfeed');
+		aC.setPage('newsfeed'); aC.setParam('p'); aC.setHash();
 		aC.loadModule('home_newsfeed');
 	}
 });
 $("#messagesLink").live('click',function(){
 	if (aC.currentPage != "messages") {
-		aC.setPage('messages');
+		aC.setPage('messages'); aC.setParam('p','messages'); aC.setHash();
 		aC.loadModule('messages');
 	}
 });
-$("#friendsLink").live('click',function(){
-	if (aC.currentPage != "profile") {
-		aC.setPage('profile'); aC.setTitle(aC.user.fullname,true); aC.setHash('profile');
-		aC.toggleModule('right');
-		aC.loadModule('profile');
-		aC.loadModule('profile_leftcol','left');
-		$("#friendsLink").click();
+$("#friendsLink,#friendsLinkHome").live('click',function(){
+	if (aC.currentPage != "friends") {
+		aC.setPage('friends'); aC.setTitle(aC.user.fullname,true); aC.setParam('p','friends'); aC.setHash();
+		if ($("#right").is(":visible")) aC.toggleModule('right');
+		aC.loadModule('friends');
+		aC.loadModule('profile_leftcol','left',function(){$("#friendsLink").click()});
 	}
 });
 $("#wallLink").live('click',function(){
 	if (aC.currentPage != "profile") {
-		aC.setPage('profile');
+		aC.setPage('profile'); aC.setParam('p','profile'); aC.setHash();
 		aC.loadModule('profile');
 	}
 });
 $("#infoLink").live('click',function(){
 	if (aC.currentPage != "about") {
-		aC.setPage('about');
+		aC.setPage('about'); aC.setParam('p','about'); aC.setHash();
 		aC.loadModule('about');
 	}
 });
 $("#photosLink").live('click',function(){
 	if (aC.currentPage != "photos") {
-		aC.setPage('photos');
+		aC.setPage('photos'); aC.setParam('p','photos'); aC.setHash();
 		aC.loadModule('photos');
 	}
 });
@@ -747,10 +756,12 @@ $("#header_search").live('keyup',function(){
 	var val = $.trim($(this).val());
 	if (val.length > 0) $("#search_results").show();
 }).live('blur',function(){
-	$("#search_results").hide();
+	setTimeout('$("#search_results").hide()',100);
 });
 $("#search_results li").live('click',function(){
-	
+	$("#header_search").val('');
+	var uid = $(this).closest(".searchResult").prop('id').substring(8);
+	aC.setParam('p','profile'); aC.setParam('id',uid); aC.setHash();
 });
 $(".updateStatus .textarea").live('focus',function(){
 	$(this).css('max-height',400);
@@ -886,8 +897,17 @@ $(".loadMore").live('click',function(){
 });
 $("#b_uploadImage").live('click',function(){
 	if (aC.currentPage != "uploadImage") {
-		aC.setPage('uploadImage');
+		aC.setPage('uploadImage'); aC.setParam('p','uploadImage'); aC.setHash();
 		aC.loadModule('uploadImage',aC.uploadImageHolder);
+	}
+});
+$(".profile_image").live('click',function(){
+	if (aC.currentPage != "photos") {
+		aC.setPage('photos'); aC.setParam('p','photos'); aC.setHash();
+		aC.loadModule('photos');
+	} else {
+		aC.setPage('profile'); aC.setParam('p','profile'); aC.setHash();
+		aC.loadModule('profile');
 	}
 });
 });

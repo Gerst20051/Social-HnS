@@ -333,9 +333,9 @@ try {
 </div>
 <div id="nav" class="rfloat">
 <ul id="pageNav">
-<li id="navHome"><a href="#" id="headerHomeLink" class="topNavLink homeLink">Home</a></li>
-<li id="navProfile"><a href="#" id="headerProfileLink" class="topNavLink profileLink">Profile</a></li>
-<li id="navLogout"><a href="#" id="headerLogoutLink" class="topNavLink logoutLink">Logout</a></li>
+<li id="navHome" class="topNavLink homeLink">Home</li>
+<li id="navProfile" class="topNavLink profileLink">Profile</li>
+<li id="navLogout" class="topNavLink logoutLink">Logout</li>
 </ul>
 </div>
 <?php
@@ -346,7 +346,7 @@ try {
 <div id="newsfeed_header">
 <div class="streamHeading">
 <div class="headerTop cf">
-<div class="headerActions"><a class="updateNewsFeed" href="#"><span class="loadingMostRecent"></span><span id="mostRecent" class="buttonText">Most Recent</span><span class="mostRecentCount"><span class="mostRecentCountValue">0</span></span></a></div>
+<div class="headerActions"><div class="link updateNewsFeed"><span class="loadingMostRecent"></span><span id="mostRecent" class="buttonText">Most Recent</span><span class="mostRecentCount"><span class="mostRecentCountValue">0</span></span></div></div>
 <div><div class="headerTitle"><i class="img"></i>News Feed</div></div>
 </div>
 </div>
@@ -387,10 +387,10 @@ try {
 ?>
 <div id="home_leftcol">
 <div id="welcome_box" class="cf">
-<a class="welcome_image" href="#profile"><img class="img" src="<?php echo $image; ?>"/></a>
+<div class="welcome_image"><img class="img" src="<?php echo $image; ?>"/></div>
 <div id="welcome_content">
-<a class="welcome_name" href="#profile"><?php echo $_SESSION['fullname']; ?></a>
-<a class="welcome_editlink" href="#editprofile">Edit My Profile</a>
+<div class="welcome_name link"><?php echo $_SESSION['fullname']; ?></div>
+<div class="welcome_editlink link">Edit My Profile</div>
 </div>
 </div>
 <div id="left_navigation">
@@ -398,27 +398,27 @@ try {
 <div id="coreAppsNav">
 <ul class="sideNav">
 <li class="sideNavItem selectedItem">
-<a id="newsFeedLink" class="item" href="#">
+<div id="newsfeedLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">News Feed</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="messagesLink" class="item" href="#messages">
+<div id="messagesLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Messages</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="friendsLink" class="item" href="#friends">
+<div id="friendsLinkHome" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Friends</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 </ul>
@@ -466,42 +466,42 @@ Edit Profile
 ?>
 <div id="profile_leftcol">
 <div id="profile_box" class="cf">
-<a class="profile_image" href="#photos"><img class="img" src="<?php echo $image; ?>"/></a>
+<div class="profile_image"><img class="img" src="<?php echo $image; ?>"/></div>
 </div>
 <div id="left_navigation">
 <div id="leftNav">
 <div id="profileNav">
 <ul class="sideNav">
 <li class="sideNavItem selectedItem">
-<a id="wallLink" class="item" href="#">
+<div id="wallLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Wall</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="infoLink" class="item" href="#messages">
+<div id="infoLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Info</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="photosLink" class="item" href="#photos">
+<div id="photosLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Photos</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 <li class="sideNavItem">
-<a id="friendsLink" class="item" href="#friends">
+<div id="friendsLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Friends</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
-</a>
+</div>
 <span class="loadingIndicator"></span>
 </li>
 </ul>
