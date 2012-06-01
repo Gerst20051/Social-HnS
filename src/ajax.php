@@ -131,7 +131,7 @@ try {
 		}
 		$db->query('UPDATE stream SET likes = likes+1, ids = \''.json_encode($ids).'\' WHERE sid = '.$_POST['oid']);
 		if ($db->affectedRows() == 1) {
-			header('Content-Type: text/javascript; charset=utf8');
+			header('Content-Type: application/json; charset=utf8');
 			$final = array(
 				"sid"=>$_POST['oid'],
 				"likes"=>$likes,
@@ -165,7 +165,7 @@ try {
 		array_push($comments,$data);
 		$db->query('UPDATE stream SET comments = \''.mysql_real_escape_string(json_encode($comments)).'\' WHERE sid = '.$_POST['oid']);
 		if ($db->affectedRows() == 1) {
-			header('Content-Type: text/javascript; charset=utf8');
+			header('Content-Type: application/json; charset=utf8');
 			$final = array(
 				"data"=>count($comments),
 				"error"=>false
@@ -211,6 +211,44 @@ if ($img) {
 		echo $random;
 	}
 }
+} elseif ($_POST['p'] == 'follow') {
+try {
+	$status = $_POST['uid'];
+	$db = new MySQL();
+	$db->query('SELECT following FROM socialhns WHERE user_id = '.$_SESSION['user_id'].' LIMIT 1');
+	if ($db->numRows() == 1) {
+		$row = $db->fetchAssocRow();
+		$following = json_decode($row["following"]);
+		if (is_array($following)) {
+			if (!in_array($_POST['uid'],$following)) {
+				array_push($following,$_POST['uid']);
+			} else die('0');
+		} else $following = array($_POST['uid']);
+		$db->query('UPDATE socialhns SET following = \''.mysql_real_escape_string(json_encode($following)).'\' WHERE user_id = '.$_SESSION['user_id']);
+		if ($db->affectedRows() == 1) {
+			$row = $db->fetchAssocRow();
+			$following = json_decode($row["following"]);
+			if (is_array($following)) {
+				if (!in_array($_POST['uid'],$following)) {
+					array_push($following,$_POST['uid']);
+				} else die('0');
+			} else $following = array($_POST['uid']);
+			$db->query('UPDATE socialhns SET following = \''.mysql_real_escape_string(json_encode($following)).'\' WHERE user_id = '.$_SESSION['user_id']);
+			if ($db->affectedRows() == 1) {
+				header('Content-Type: application/json; charset=utf8');
+				$final = array(
+					"error"=>false
+				);
+				print_r(json_encode($final));
+			} else die('0');
+		} else die('0');
+	} else die('0');
+} catch(Exception $e) {
+	echo $e->getMessage();
+	exit();
+}
+} elseif ($_POST['p'] == 'unfollow') {
+
 }
 }
 } elseif ($_SERVER['REQUEST_METHOD'] == 'GET') {
@@ -220,10 +258,14 @@ try {
 	$db = new MySQL();
 	if (!isset($_GET['uid'])) $uid = $_SESSION['user_id'];
 	else $uid = $_GET['uid'];
-	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.default_image,h.followers FROM (login u JOIN info i ON u.user_id = i.user_id) JOIN socialhns h ON u.user_id = h.user_id WHERE u.user_id = '.$uid);
+	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.default_image,h.following,h.followers FROM (login u JOIN info i ON u.user_id = i.user_id) JOIN socialhns h ON u.user_id = h.user_id WHERE u.user_id = '.$uid.' LIMIT 1');
 	if ($db->numRows() == 1) {
-		header('Content-Type: text/javascript; charset=utf8');
-		print_r(json_encode($db->fetchAssocRow()));
+		if (!isset($_GET['uid'])) {
+			header('Content-Type: application/json; charset=utf8');
+			print_r(json_encode($db->fetchAssocRow()));
+		} else {
+		
+		}
 	} else die('0');
 } catch(Exception $e) {
 	echo $e->getMessage();
@@ -246,7 +288,7 @@ try {
 	}
 	$db->query('SELECT u.user_id,u.username,i.firstname,i.middlename,i.lastname,i.default_image,i.hometown,i.current_city,h.followers FROM (login u JOIN info i ON u.user_id = i.user_id) JOIN socialhns h ON u.user_id = h.user_id WHERE '.$query.' ORDER BY i.firstname LIMIT 8');
 	if ($db->numRows() > 0) {
-		header('Content-Type: text/javascript; charset=utf8');
+		header('Content-Type: application/json; charset=utf8');
 		$rows = $db->fetchAssocRows();
 		$final = array(
 			"data"=>$rows,
@@ -265,10 +307,10 @@ try {
 	$db = new MySQL();
 	$db->sfquery(array('INSERT INTO users_online VALUES ("%s","%s","%s","%s")',$timestamp,$_SESSION['user_id'],$_SESSION['username'],'/socialhns/#'.$_GET['hash']));
 	$db->query("DELETE FROM users_online WHERE timestamp < $timeout");
-	$db->query('SELECT followers FROM socialhns WHERE user_id = '.$_SESSION['user_id']);
-	$followers = array();
-	for ($i=1;$i<201;$i++) array_push($followers,$i);
-	if (!empty($followers)) $ownerlist = $_SESSION['user_id'].','.implode(',', $followers);
+	$db->query('SELECT following FROM socialhns WHERE user_id = '.$_SESSION['user_id']);
+	$following = array();
+	for ($i=1;$i<201;$i++) array_push($following,$i);
+	if (!empty($following)) $ownerlist = $_SESSION['user_id'].','.implode(',', $following);
 	else $ownerlist = $_SESSION['user_id'];
 	if (!isset($_GET['sid'])) {
 		$limit = ' LIMIT 20';
@@ -285,7 +327,7 @@ try {
 		$db->query('SELECT s.sid,s.owner,s.timestamp,s.type,s.data,s.likes,s.comments,s.shares,s.block,s.ids,u.username,i.firstname,i.middlename,i.lastname,i.default_image FROM (stream s JOIN login u ON s.owner = u.user_id) JOIN info i ON s.owner = i.user_id WHERE s.owner IN ('.$ownerlist.') AND s.type = 1 AND s.block NOT LIKE "%,'.$_SESSION['user_id'].',%" AND s.sid = '.$_GET['sid'].' LIMIT 1');
 	}
 	if ($db->numRows() > 0) {
-		header('Content-Type: text/javascript; charset=utf8');
+		header('Content-Type: application/json; charset=utf8');
 		$rows = $db->fetchAssocRows();
 		for ($i=0;$i<count($rows);$i++) {
 			unset($rows[$i]["block"]);
@@ -303,18 +345,6 @@ try {
 			"error"=>false
 		);
 		print_r(json_encode($final));
-	} else die('0');
-} catch(Exception $e) {
-	echo $e->getMessage();
-	exit();
-}
-} elseif ($_GET['p'] == 'followers') {
-try {
-	$db = new MySQL();
-	$db->query();
-	if ($db->numRows() > 0) {
-		$row = $db->fetchRows();
-		
 	} else die('0');
 } catch(Exception $e) {
 	echo $e->getMessage();
@@ -397,7 +427,7 @@ try {
 <div id="leftNav">
 <div id="coreAppsNav">
 <ul class="sideNav">
-<li class="sideNavItem selectedItem">
+<li id="sideNavNewsfeedLink" class="sideNavItem selectedItem">
 <div id="newsfeedLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">News Feed</span>
@@ -405,7 +435,7 @@ try {
 </div>
 <span class="loadingIndicator"></span>
 </li>
-<li class="sideNavItem">
+<li id="sideNavMessagesLink" class="sideNavItem">
 <div id="messagesLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
 <span class="sideNavLink">Messages</span>
@@ -413,10 +443,26 @@ try {
 </div>
 <span class="loadingIndicator"></span>
 </li>
-<li class="sideNavItem">
-<div id="friendsLinkHome" class="item">
+<li id="sideNavContactsLink" class="sideNavItem">
+<div id="contactsLink" class="item">
 <span class="sideNavImg"><i class="img"></i></span>
-<span class="sideNavLink">Friends</span>
+<span class="sideNavLink">Contacts</span>
+<span class="sideNavCount"><span class="countValue">0</span></span>
+</div>
+<span class="loadingIndicator"></span>
+</li>
+<li id="sideNavFollowingLinkHome" class="sideNavItem">
+<div id="followingLinkHome" class="item">
+<span class="sideNavImg"><i class="img"></i></span>
+<span class="sideNavLink">Following</span>
+<span class="sideNavCount"><span class="countValue">0</span></span>
+</div>
+<span class="loadingIndicator"></span>
+</li>
+<li id="sideNavFollowersLinkHome" class="sideNavItem">
+<div id="followersLinkHome" class="item">
+<span class="sideNavImg"><i class="img"></i></span>
+<span class="sideNavLink">Followers</span>
 <span class="sideNavCount"><span class="countValue">0</span></span>
 </div>
 <span class="loadingIndicator"></span>
@@ -439,10 +485,10 @@ Main Right Column!
 Messages
 </div>
 <?php
-} elseif ($_GET['p'] == 'friends') {
+} elseif ($_GET['p'] == 'contacts') {
 ?>
-<div id="friends">
-Friends
+<div id="contacts">
+Contacts
 </div>
 <?php
 } elseif ($_GET['p'] == 'edit') {
@@ -451,81 +497,86 @@ Friends
 Edit Profile
 <div class="buttonTools">
 <ul class="toolList lfloat">
-<li class="listItem"><label class="uploadImageButton" for="b_uploadImage"><input value="Upload Images" type="submit" id="b_uploadImage"/></label></li>
+<li class="listItem"><label class="uploadImageButton" for="b_uploadImages"><input value="Upload Images" type="submit" id="b_uploadImages"/></label></li>
 </ul>
 </div>
 </div>
 <?php
 } elseif ($_GET['p'] == 'profile') {
-	echo '<div id="profile">';
-	echo '<h1>'.$_SESSION['fullname'].'</h1>';
-	echo '</div>';
-} elseif ($_GET['p'] == 'profile_leftcol') {
-	if (isset($_SESSION['default_image'])) $image = '/uploads/' . $_SESSION['username'] . '/images/thumb/' . $_SESSION['default_image'];
-	else $image = 'i/mem/default.jpg';
 ?>
-<div id="profile_leftcol">
-<div id="profile_box" class="cf">
-<div class="profile_image"><img class="img" src="<?php echo $image; ?>"/></div>
+<div id="profile">
+<div id="profileHeader">
+<div id="profileFollowButton" class="buttonTools rfloat"><ul class="toolList lfloat"><li class="listItem"><label class="followButton" for="b_follow"><input value="Follow" type="submit" id="b_follow"/></label></li></ul></div>
+<span id="profileName">Andrew Gerst</span>
 </div>
-<div id="left_navigation">
-<div id="leftNav">
 <div id="profileNav">
-<ul class="sideNav">
-<li class="sideNavItem selectedItem">
-<div id="wallLink" class="item">
-<span class="sideNavImg"><i class="img"></i></span>
-<span class="sideNavLink">Wall</span>
-<span class="sideNavCount"><span class="countValue">0</span></span>
-</div>
-<span class="loadingIndicator"></span>
-</li>
-<li class="sideNavItem">
-<div id="infoLink" class="item">
-<span class="sideNavImg"><i class="img"></i></span>
-<span class="sideNavLink">Info</span>
-<span class="sideNavCount"><span class="countValue">0</span></span>
-</div>
-<span class="loadingIndicator"></span>
-</li>
-<li class="sideNavItem">
-<div id="photosLink" class="item">
-<span class="sideNavImg"><i class="img"></i></span>
-<span class="sideNavLink">Photos</span>
-<span class="sideNavCount"><span class="countValue">0</span></span>
-</div>
-<span class="loadingIndicator"></span>
-</li>
-<li class="sideNavItem">
-<div id="friendsLink" class="item">
-<span class="sideNavImg"><i class="img"></i></span>
-<span class="sideNavLink">Friends</span>
-<span class="sideNavCount"><span class="countValue">0</span></span>
-</div>
-<span class="loadingIndicator"></span>
-</li>
+<ul id="profileNavList">
+<li id="profileNavWallLink" class="profileNavItem selectedItem"><div>Wall</div><div class="invisible bold duplicate">Wall</div></li>
+<li id="profileNavAboutLink" class="profileNavItem"><div>About</div><div class="invisible bold duplicate">About</div></li>
+<li id="profileNavPhotosLink" class="profileNavItem"><div>Photos</div><div class="invisible bold duplicate">Photos</div></li>
+<li id="profileNavFollowingLink" class="profileNavItem"><div>Following</div><div class="invisible bold duplicate">Following</div></li>
+<li id="profileNavFollowersLink" class="profileNavItem"><div>Followers</div><div class="invisible bold duplicate">Followers</div></li>
 </ul>
 </div>
-</div>
-</div>
-</div>
-<?php
-} elseif ($_GET['p'] == 'wall') {
-?>
+<div id="profileContent">
 <div id="wall">
 Wall
 </div>
-<?php
-} elseif ($_GET['p'] == 'about') {
-?>
 <div id="about">
-About
+<ul id="aboutList">
+<li id="occupation" class="aboutListItem">
+<div class="heading">Occupation</div>
+<div class="content">Computer Programmer</div>
+</li>
+<li id="current_city" class="aboutListItem">
+<div class="heading">Current City</div>
+<div class="content">Chapel Hill, NC</div>
+</li>
+<li id="hometown" class="aboutListItem">
+<div class="heading">Hometown</div>
+<div class="content">Baltimore, MD</div>
+</li>
+<li id="email" class="aboutListItem">
+<div class="heading">Email</div>
+<div class="content">gerst20051@aol.com</div>
+</li>
+<li id="birthday" class="aboutListItem">
+<div class="heading">Birthdate</div>
+<div class="content">August 12, 1993</div>
+</li>
+<li id="gender" class="aboutListItem">
+<div class="heading">Gender</div>
+<div class="content">Male</div>
+</li>
+</ul>
+<div id="websiteLinks">
 </div>
-<?php
-} elseif ($_GET['p'] == 'photos') {
-?>
+</div>
 <div id="photos">
 Photos
+</div>
+<div id="following">
+Following
+</div>
+<div id="followers">
+Followers
+</div>
+</div>
+</div>
+<?php
+} elseif ($_GET['p'] == 'profile_leftcol') {
+?>
+<div id="profile_leftcol">
+<div id="profile_box" class="cf">
+<div class="profile_image"><img class="img" src=""/></div>
+</div>
+<div id="left_navigation">
+<div id="leftNav">
+<div id="leftNavBothFollow"><div class="leftNavHeader">Both Following</div><div class="leftNavContent"></div></div>
+<div id="leftNavFollowing"><div class="leftNavHeader">Following</div><div class="leftNavContent"></div></div>
+<div id="leftNavBothFollowers"><div class="leftNavHeader">Followers</div><div class="leftNavContent"></div></div>
+</div>
+</div>
 </div>
 <?php
 }
@@ -537,7 +588,7 @@ if (isset($_POST['login'])) {
 try {
 	$db = new MySQL();
 	$db->sfquery(array('SELECT * FROM login u JOIN info i ON u.user_id = i.user_id WHERE username = "%s" AND pass = PASSWORD("%s") LIMIT 1',$_POST['username'],substr(base64_decode($_POST['password']),3)));
-	if ($db->numRows() > 0) {
+	if ($db->numRows() == 1) {
 		$row = $db->fetchAssocRow();
 		loggedIn($row);
 	} else die('0');
