@@ -566,10 +566,11 @@ addNewComment: function(cid,comment){
 	var timesecs = hours + ":" + minutes + ":" + seconds + " " + prefix;
 	var title = dayArray[datetime.getDay()] + ", " + monthArray[datetime.getMonth()] + " " + datetime.getDate() + ", " + datetime.getFullYear() + " " + timesecs;
 	var time = hours + ":" + minutes + " " + prefix;
+	var likes = "";
 	var c = '<li id="comment-'+cid+'">';
 	c += '<div class="commentWrapper">';
 	c += '<div class="commentContent">';
-	c += '<divclass="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></div>';
+	c += '<div class="commentImageLink"><img class="commentImg" src="/uploads/'+aC.user.username+'/images/thumb/'+aC.user.default_image+'"/></div>';
 	c += '<div class="commentNameBody"><div class="link commentNameLink">'+aC.user.fullname+'</div> - <span class="commentBody">'+aC.stripSlashes(comment)+'</span></div>';
 	c += '<span class="expandComment"><span class="link expandCommentLink">Expand this comment &#187;</span></span>';
 	c += '<span class="collapseComment"><span class="link collapseCommentLink">Collapse this comment</span></span>';

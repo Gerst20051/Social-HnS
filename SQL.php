@@ -37,7 +37,7 @@ PRIMARY KEY (`user_id` )
 ) ENGINE = MYISAM');
 
 array_push($sql,'CREATE TABLE IF NOT EXISTS `stream` (
-`sid` INT( 10 ) NOT NULL ,
+`sid` INT( 10 ) NOT NULL AUTO_INCREMENT ,
 `owner` INT( 10 ) NOT NULL ,
 `timestamp` INT( 10 ) NOT NULL ,
 `type` INT( 1 ) NOT NULL ,
