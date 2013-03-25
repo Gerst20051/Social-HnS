@@ -1,13 +1,12 @@
 <?php
 session_start();
-define('LOCAL',true);
-define('ROOT',dirname(__FILE__));
 
 if (isset($_GET['p']) && $_GET['p'] == 'logged') {
 	if (isset($_SESSION['logged'])) die('true'); else die('0');
 }
 
-include 'mysql.class.php';
+require_once 'config.inc.php';
+require_once 'mysql.class.php';
 
 function isint($mixed) {
 	return (preg_match('/^\d*$/', $mixed) == 1);
@@ -182,7 +181,7 @@ try {
 } elseif ($_POST['p'] == 'imageupload') {
 $img = imagecreatefromstring(base64_decode($_POST['imagedata']));
 if ($img) {
-	$uploaddir = ((LOCAL)?dirname(ROOT):ROOT)."/uploads/".$_SESSION['username']."/images/";
+	$uploaddir = DIR."/uploads/".$_SESSION['username']."/images/";
 	$thumbuploaddir = $uploaddir."thumb/";
 	if (!is_dir($uploaddir)) mkdir($uploaddir,0777,true) or die("Upload directory could not be created.");
 	if (!is_dir($thumbuploaddir)) mkdir($thumbuploaddir,0777,true) or die("Thumb directory could not be created.");

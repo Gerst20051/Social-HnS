@@ -196,7 +196,7 @@ margin-left:5px;
 
 .buttonTools label {
 display:block;
-width:0;
+width:100%;
 }
 
 .buttonTools input:not(:disabled) {
@@ -213,6 +213,7 @@ width:980px;
 #docHeader {
 position:fixed;
 width:980px;
+z-index:1;
 }
 
 #docHeader > header {
@@ -224,7 +225,6 @@ line-height:1.4;
 position:absolute;
 top:0;
 width:100%;
-z-index:1;
 }
 
 #docHeader > header h1 {
