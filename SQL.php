@@ -30,6 +30,7 @@ PRIMARY KEY (`user_id` )
 
 array_push($sql,'CREATE TABLE IF NOT EXISTS `socialhns` (
 `user_id` INT( 10 ) NOT NULL ,
+`following` TEXT NOT NULL ,
 `followers` TEXT NOT NULL ,
 `contacts` TEXT NOT NULL ,
 PRIMARY KEY (`user_id` )
